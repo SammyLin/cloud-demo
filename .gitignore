@@ -1,0 +1,35 @@
+# Global ignores
+.DS_Store
+*.swp
+*.swo
+*.bak
+*.tmp
+
+# Pulumi
+infrastructure/.pulumi/
+infrastructure/Pulumi.*.yaml.backup
+infrastructure/Pulumi.dev.yaml
+infrastructure/Pulumi.staging.yaml
+infrastructure/Pulumi.prod.yaml
+
+# Java/Maven
+applications/*/target/
+applications/*/.classpath
+applications/*/.project
+applications/*/.settings/
+applications/*/.idea/
+applications/*/*.iml
+
+# OS/Editor
+.idea/
+*.iml
+.vscode/
+
+# Logs
+*.log
+
+# Node (if any frontend)
+node_modules/
+
+# Windsurf
+.windsurf/local/
