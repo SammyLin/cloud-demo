@@ -1,9 +1,4 @@
 package main
 
-// App configuration for deployment
-const (
-	AppServicePlanName = "citydemo-appserviceplan"
-	WebAppName        = "citydemo-webapp"
-	AppServiceSku     = "B1"
-	JavaVersion       = "Java|21"
-)
+// Pulumi config values are now loaded from Pulumi.<stack>.yaml.
+// See Pulumi.dev.yaml.example for reference.
