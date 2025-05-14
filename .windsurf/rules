@@ -1,0 +1,164 @@
+# Commit Message Rules
+- All git commit messages should be written in English.
+
+## Project Structure Models
+
+### Monolithic Structure
+- Single project defines the entire infrastructure and application resources for a vertical service.
+- **Use when**: Working with small teams, early development phases, or when simplicity is paramount.
+- **Location**: Place in a dedicated `/infrastructure` directory at your repository root.
+
+### Micro-Stacks Structure
+- Similar to microservices concept, breaking projects into smaller independently managed components.
+- **Use when**: Working in large organizations, with complex infrastructure, or when different teams handle different components.
+- **Location**: Create separate directories for each micro-stack (e.g., `/networking`, `/kubernetes`, `/databases`).
+
+## Decision Factors for Project Division
+
+- **Use case complexity**: Multiple applications suggest multiple Pulumi projects.
+- **Organization structure**: Align with company/department/team boundaries.
+- **Access control needs**: Use multiple projects with stack permissions and RBAC for fine-grained control.
+- **Resource relationships**: Shared infrastructure layers are best handled in separate projects.
+- **Resource lifecycle**: Resources with shared lifecycles should stay in the same project.
+- **Change frequency**: Separate frequently changing resources from stable ones.
+- **Blast radius**: Limit potential damage from human errors by isolating critical components.
+
+## Implementation Patterns
+
+### Infrastructure, Platform, and Application Separation
+
+```
+├── infrastructure/         # Base infrastructure (VPC, networking)
+│   ├── main.go
+│   ├── Pulumi.yaml
+│   ├── Pulumi.dev.yaml
+│   ├── Pulumi.staging.yaml
+│   └── Pulumi.prod.yaml
+├── platform/               # Kubernetes cluster and platform services
+│   ├── main.ts
+│   ├── Pulumi.yaml
+│   └── Pulumi.[env].yaml
+└── applications/           # Application-specific resources
+    ├── app1/
+    │   ├── index.ts
+    │   ├── Pulumi.yaml
+    │   └── Pulumi.[env].yaml
+    └── app2/
+        ├── index.ts
+        ├── Pulumi.yaml
+        └── Pulumi.[env].yaml
+```
+
+## Internal Code Organization
+
+### TypeScript Projects
+
+```typescript
+// index.ts - Main entry point
+import * as pulumi from "@pulumi/pulumi";
+import * as aws from "@pulumi/aws";
+import { createNetworking } from "./networking";
+import { createDatabase } from "./database";
+
+// Organize by infrastructure domain
+const network = createNetworking();
+const db = createDatabase(network.subnetIds);
+
+export const vpcId = network.vpcId;
+export const dbEndpoint = db.endpoint;
+```
+
+### Go Projects
+
+```go
+// main.go - Entry point
+package main
+
+import (
+    "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+    "./networking"    // Local package for network resources
+    "./database"      // Local package for database resources
+)
+
+func main() {
+    pulumi.Run(func(ctx *pulumi.Context) error {
+        // Organize by infrastructure domain
+        network, err := networking.CreateNetworking(ctx)
+        if err != nil {
+            return err
+        }
+        
+        _, err = database.CreateDatabase(ctx, database.DatabaseArgs{
+            SubnetIds: network.SubnetIds,
+        })
+        
+        return err
+    })
+}
+```
+
+## Stack References and Dependencies
+
+### Managing Cross-Stack Dependencies
+
+```typescript
+// In the dependent stack
+import * as pulumi from "@pulumi/pulumi";
+
+// Reference outputs from another stack
+const infraStack = new pulumi.StackReference("org/infrastructure/prod");
+const vpcId = infraStack.getOutput("vpcId");
+const subnetIds = infraStack.getOutput("subnetIds");
+
+// Use the referenced outputs
+const cluster = new aws.eks.Cluster("cluster", {
+    vpcConfig: {
+        subnetIds: subnetIds,
+        // ...
+    },
+    // ...
+});
+```
+
+## Git Repository Alignment
+
+### For Monolithic Approach
+- Single repository containing all Pulumi code
+- Subdirectories organize by infrastructure domain
+- Common components in shared directories
+
+### For Micro-Stack Approach
+- Multiple repositories (one per Pulumi project)
+- Repository boundaries align with team ownership
+- Cross-stack references managed via stack outputs
+
+## Stack Tagging and Organization
+
+```bash
+# Tag stacks for organization in Pulumi Cloud
+pulumi stack tag set environment dev
+pulumi stack tag set team platform
+pulumi stack tag set costCenter 12345
+```
+
+## Project Initialization Templates
+
+### For New Infrastructure Projects
+
+```bash
+# Standard project structure initialization
+mkdir -p infrastructure/{networking,compute,database}
+cd infrastructure
+pulumi new typescript   # Or your preferred language
+```
+
+## Configuration Management
+
+```
+├── Pulumi.yaml          # Project definition
+├── Pulumi.dev.yaml      # Dev environment config
+├── Pulumi.staging.yaml  # Staging environment config
+└── Pulumi.prod.yaml     # Production environment config
+```
+
+This structure provides a solid foundation for organizing your Pulumi projects, whether you're taking a monolithic or micro-stack approach. Adapt these guidelines to your specific organization and project needs, keeping in mind the key decision factors and best practices outlined above.
