@@ -2,6 +2,19 @@
 
 This project provides a cross-cloud (multi-cloud) Infrastructure as Code (IaC) foundation for deploying a Java web application that demonstrates Taiwan city/county data. The goal is "write once, deploy anywhere"—enabling automated provisioning and deployment on different cloud providers (Azure, GCP, AWS) via unified interfaces and best practices.
 
+---
+
+## ⚠️ TODO: Next Steps for Key Vault & Environment Variables
+
+1. Implement Key Vault and environment variable integration. Two issues were encountered:
+   - After creating the Key Vault, its name could not be mapped to the App Service environment variable. There was also a naming error:  
+     `azure-native:keyvault:Vault resource 'citydemo-keyvault' has a problem: 'vaultName' does not match expression '^[a-zA-Z0-9-]{3,24}$'`.
+   - Managed Identity must be set up via CLI. Pulumi currently cannot fully automate access policy/permissions for Managed Identity.
+
+2. Next time, please ensure Key Vault name and environment variable consistency, and manually configure Managed Identity permissions using the Azure CLI.
+
+---
+
 - **Initial focus:** Azure implementation and connectivity verification
 - **Architecture:** Designed for future extensibility to GCP and AWS
 - **Core features:** Unified resource abstraction, secret/config management, NoSQL database, application hosting, automated deployment
