@@ -1,6 +1,0 @@
-config:
-  cloud-demo:appServiceLabelValue: Taiwan Cloud
-  cloud-demo:webAppName: citydemo-webapp
-  cloud-demo:appServicePlanName: citydemo-appserviceplan
-  cloud-demo:javaVersion: Java|21
-  cloud-demo:appServiceSku: B1

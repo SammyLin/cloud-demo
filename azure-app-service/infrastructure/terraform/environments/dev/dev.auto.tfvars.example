@@ -1,0 +1,2 @@
+# 範例檔案，請複製為 dev.auto.tfvars 並填入你的 Azure 訂閱 ID
+subscription_id = "YOUR_SUBSCRIPTION_ID"

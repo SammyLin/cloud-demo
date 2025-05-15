@@ -1,0 +1,7 @@
+config:
+  cloud-demo:resourceGroupName: slin-ap-rg
+  cloud-demo:appServiceLabelValue: Taiwan Cloud
+  cloud-demo:webAppName: slin-ap-web
+  cloud-demo:appServicePlanName: slin-ap-plan
+  cloud-demo:javaVersion: Java|21
+  cloud-demo:appServiceSku: B1

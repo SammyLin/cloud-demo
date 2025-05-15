@@ -1,0 +1,3 @@
+name: app-service
+runtime: go
+description: Azure app-service with Pulumi (Go)

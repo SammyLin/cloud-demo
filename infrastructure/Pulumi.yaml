@@ -1,3 +1,0 @@
-name: azure-connect-test
-runtime: go
-description: Azure connectivity test with Pulumi (Go)
