@@ -1,0 +1,5 @@
+config:
+  azure-functions-demo:resourceGroupName: taiwan-functions-rg
+  azure-functions-demo:functionAppName: taiwan-city-functions
+  azure-functions-demo:storageAccountName: twfuncstorage01
+  azure-functions-demo:location: eastasia

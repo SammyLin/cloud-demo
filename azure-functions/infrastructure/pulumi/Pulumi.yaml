@@ -1,0 +1,8 @@
+name: azure-functions-demo
+runtime: go
+description: Azure Functions infrastructure demo using Pulumi and Go
+template:
+  config:
+    azure-native:location:
+      description: The Azure region to deploy to
+      default: eastasia
