@@ -26,3 +26,28 @@ variable "storage_account_name" {
   type        = string
   default     = "taiwanfunctionsstorage"
 }
+
+# Custom environment variables
+variable "app_environment" {
+  description = "Application environment"
+  type        = string
+  default     = "development"
+}
+
+variable "api_version" {
+  description = "API version"
+  type        = string
+  default     = "v1"
+}
+
+variable "debug_mode" {
+  description = "Enable debug mode"
+  type        = string
+  default     = "true"
+}
+
+variable "max_cities_count" {
+  description = "Maximum number of cities to return"
+  type        = string
+  default     = "50"
+}

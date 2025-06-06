@@ -23,3 +23,9 @@ variable "storage_connection_string" {
   type        = string
   sensitive   = true
 }
+
+variable "custom_app_settings" {
+  description = "Custom application settings for the Function App"
+  type        = map(string)
+  default     = {}
+}

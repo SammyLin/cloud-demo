@@ -3,6 +3,10 @@
   "Values": {
     "AzureWebJobsStorage": "UseDevelopmentStorage=true",
     "FUNCTIONS_WORKER_RUNTIME": "java",
-    "FUNCTIONS_EXTENSION_VERSION": "~4"
+    "FUNCTIONS_EXTENSION_VERSION": "~4",
+    "APP_ENVIRONMENT": "local",
+    "API_VERSION": "v1",
+    "DEBUG_MODE": "true",
+    "MAX_CITIES_COUNT": "10"
   }
 }

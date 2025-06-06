@@ -3,3 +3,8 @@ config:
   azure-functions-demo:functionAppName: taiwan-city-functions
   azure-functions-demo:storageAccountName: twfuncstorage
   azure-functions-demo:location: eastasia
+  # Custom environment variables
+  azure-functions-demo:appEnvironment: development
+  azure-functions-demo:apiVersion: v1
+  azure-functions-demo:debugMode: "true"
+  azure-functions-demo:maxCitiesCount: "15"

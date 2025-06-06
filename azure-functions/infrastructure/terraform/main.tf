@@ -32,4 +32,10 @@ module "function_app" {
   location                   = module.resource_group.location
   storage_account_name       = module.storage_account.name
   storage_connection_string  = module.storage_account.connection_string
+  custom_app_settings        = {
+    "APP_ENVIRONMENT"   = var.app_environment
+    "API_VERSION"       = var.api_version
+    "DEBUG_MODE"        = var.debug_mode
+    "MAX_CITIES_COUNT"  = var.max_cities_count
+  }
 }

@@ -26,12 +26,13 @@ resource "azurerm_linux_function_app" "main" {
     }
   }
 
-  app_settings = {
+  app_settings = merge({
+    # Azure Functions required settings
     "AzureWebJobsStorage"         = var.storage_connection_string
     "FUNCTIONS_EXTENSION_VERSION" = "~4"
     "FUNCTIONS_WORKER_RUNTIME"    = "java"
     "WEBSITE_RUN_FROM_PACKAGE"    = "1"
-  }
+  }, var.custom_app_settings)
 
   tags = {
     Environment = "dev"

@@ -85,6 +85,23 @@ func main() {
 						Name:  pulumi.String("WEBSITE_RUN_FROM_PACKAGE"),
 						Value: pulumi.String("1"),
 					},
+					// Custom environment variables
+					web.NameValuePairArgs{
+						Name:  pulumi.String("APP_ENVIRONMENT"),
+						Value: pulumi.String(cfg.Get("appEnvironment")),
+					},
+					web.NameValuePairArgs{
+						Name:  pulumi.String("API_VERSION"),
+						Value: pulumi.String(cfg.Get("apiVersion")),
+					},
+					web.NameValuePairArgs{
+						Name:  pulumi.String("DEBUG_MODE"),
+						Value: pulumi.String(cfg.Get("debugMode")),
+					},
+					web.NameValuePairArgs{
+						Name:  pulumi.String("MAX_CITIES_COUNT"),
+						Value: pulumi.String(cfg.Get("maxCitiesCount")),
+					},
 				},
 				JavaVersion: pulumi.String("17"),
 			},
