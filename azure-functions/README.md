@@ -19,9 +19,18 @@ azure-functions/
 
 ## Application Overview
 
-The demo includes two HTTP-triggered functions:
+The demo includes three HTTP-triggered functions:
 - `HttpExample` - Simple "Hello World" function with name parameter
-- `TaiwanCities` - Returns a list of Taiwan cities/counties as JSON
+- `TaiwanCities` - Returns a list of Taiwan cities/counties as JSON with environment-based configuration
+- `Config` - Displays current environment variables and configuration settings
+
+### Environment Variables Support
+
+The application supports the following environment variables:
+- `APP_ENVIRONMENT` - Application environment (development/staging/production)
+- `API_VERSION` - API version for client compatibility
+- `DEBUG_MODE` - Enable detailed logging when set to "true"
+- `MAX_CITIES_COUNT` - Maximum number of cities to return from the TaiwanCities endpoint
 
 ---
 
@@ -68,6 +77,7 @@ The demo includes two HTTP-triggered functions:
    # Test the endpoints
    curl "$FUNCTION_URL/api/HttpExample?name=World"
    curl "$FUNCTION_URL/api/cities"
+   curl "$FUNCTION_URL/api/config"
    ```
 
 ## Pulumi Workflow
@@ -104,6 +114,7 @@ The demo includes two HTTP-triggered functions:
    # Test the endpoints
    curl "$FUNCTION_URL/api/HttpExample?name=World"
    curl "$FUNCTION_URL/api/cities"
+   curl "$FUNCTION_URL/api/config"
    ```
 
 ---
@@ -126,6 +137,11 @@ config:
   azure-functions-demo:functionAppName: taiwan-city-functions
   azure-functions-demo:storageAccountName: taiwanfunctionsstorage
   azure-functions-demo:location: eastasia
+  # Custom environment variables
+  azure-functions-demo:appEnvironment: development
+  azure-functions-demo:apiVersion: v1
+  azure-functions-demo:debugMode: "true"
+  azure-functions-demo:maxCitiesCount: "15"
 ```
 
 ### Terraform Configuration (`main.tfvars`)
@@ -134,6 +150,12 @@ resource_group_name    = "taiwan-functions-rg"
 location               = "East Asia"
 function_app_name      = "taiwan-city-functions"
 storage_account_name   = "taiwanfunctionsstorage"
+
+# Custom environment variables (optional)
+app_environment        = "development"
+api_version           = "v1"
+debug_mode            = "true"
+max_cities_count      = "25"
 ```
 
 ---
@@ -156,6 +178,23 @@ func start
 Functions will be available at:
 - `http://localhost:7071/api/HttpExample?name=World`
 - `http://localhost:7071/api/cities`
+- `http://localhost:7071/api/config`
+
+Local environment variables are configured in `local.settings.json`:
+```json
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "java",
+    "FUNCTIONS_EXTENSION_VERSION": "~4",
+    "APP_ENVIRONMENT": "local",
+    "API_VERSION": "v1",
+    "DEBUG_MODE": "true",
+    "MAX_CITIES_COUNT": "10"
+  }
+}
+```
 
 ---
 

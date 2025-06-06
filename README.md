@@ -1,180 +1,143 @@
 # Cross-Cloud Taiwan City Data Service – Infrastructure Demo
 
-This project provides a cross-cloud (multi-cloud) Infrastructure as Code (IaC) foundation for deploying a Java web application that demonstrates Taiwan city/county data. The goal is "write once, deploy anywhere"—enabling automated provisioning and deployment on different cloud providers (Azure, GCP, AWS) via unified interfaces and best practices.
+This project provides a cross-cloud (multi-cloud) Infrastructure as Code (IaC) foundation for deploying Java applications that demonstrate Taiwan city/county data. The goal is "write once, deploy anywhere"—enabling automated provisioning and deployment on different cloud providers via unified interfaces and best practices.
 
 ---
 
 - **Initial focus:** Azure implementation and connectivity verification
 - **Architecture:** Designed for future extensibility to GCP and AWS
-- **Core features:** Unified resource abstraction, secret/config management, NoSQL database, application hosting, automated deployment
-- **Demo app:** Java Spring Boot, with data access abstraction for cloud-native NoSQL backends
+- **Core features:** Unified resource abstraction, secret/config management, automated deployment
+- **Demo apps:** Java Spring Boot (Azure App Service) and Java Azure Functions with environment variables support
 
 ## Project Structure
 
 ```
 cloud-demo/
-├── .windsurf/           # Project rules and automation
-│   └── rules
-├── azure-app-service/   # Azure App Service IaC & applications
-│   ├── applications/    # Spring Boot app source code
-│   └── infrastructure/  # Pulumi & Terraform configs/scripts
+├── azure-app-service/      # Azure App Service IaC & Spring Boot application
+│   ├── applications/       # Spring Boot app source code
+│   │   └── taiwan-city-demo/
+│   └── infrastructure/     # Pulumi & Terraform configs/scripts
 │       ├── pulumi/
 │       │   └── deploy-app.sh
 │       └── terraform/
 │           └── deploy-app.sh
-└── README.md            # Project documentation
+├── azure-functions/        # Azure Functions IaC & serverless application
+│   ├── applications/       # Java Azure Functions source code
+│   │   └── taiwan-city-functions/
+│   └── infrastructure/     # Pulumi & Terraform configs/scripts
+│       ├── pulumi/
+│       │   └── deploy-app.sh
+│       └── terraform/
+│           └── deploy-app.sh
+└── README.md               # This documentation
 ```
+
+## Available Implementations
+
+### 1. Azure App Service (Spring Boot)
+- **Location:** `azure-app-service/`
+- **Technology:** Java Spring Boot web application
+- **Endpoints:** 
+  - `/` - Hello World endpoint
+  - Custom endpoints for Taiwan city data
+- **Infrastructure:** Pulumi and Terraform support
+- **Features:** Web application hosting, automated deployment
+
+### 2. Azure Functions (Serverless)
+- **Location:** `azure-functions/`
+- **Technology:** Java Azure Functions (HTTP triggers)
+- **Endpoints:**
+  - `/api/HttpExample` - Simple "Hello World" function
+  - `/api/cities` - Taiwan cities data with environment-based configuration
+  - `/api/config` - Display current environment variables
+- **Infrastructure:** Pulumi and Terraform support
+- **Features:** Serverless computing, environment variables support, configurable responses
+
+## Environment Variables Support
+
+The Azure Functions implementation includes comprehensive environment variables support:
+
+- `APP_ENVIRONMENT` - Application environment (development/staging/production)
+- `API_VERSION` - API version for client compatibility  
+- `DEBUG_MODE` - Enable detailed logging when set to "true"
+- `MAX_CITIES_COUNT` - Maximum number of cities to return
 
 ## Prerequisites
-- [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli) installed
-- [Pulumi CLI](https://www.pulumi.com/docs/get-started/install/) installed
-- Go 1.21 or later installed (for Pulumi Go example)
 
-## Pulumi Configuration & Environment Variables
+- [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli) installed and logged in (`az login`)
+- [Maven](https://maven.apache.org/install.html) for building Java applications
+- [Pulumi CLI](https://www.pulumi.com/docs/get-started/install/) (for Pulumi workflows)
+- [Terraform CLI](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli) (for Terraform workflows)
 
-All deployment variables (such as App Service name, label, Java version, etc.) are managed in Pulumi YAML config files. This allows you to easily switch environments and keep sensitive or environment-specific values out of source code.
+## Quick Start
 
-- **Edit your stack config:**
-  - Copy the example file: `cp azure-app-service/infrastructure/pulumi/Pulumi.dev.yaml.example azure-app-service/infrastructure/pulumi/Pulumi.dev.yaml`
-  - Edit `Pulumi.dev.yaml` as needed. Example:
-
-    ```yaml
-    config:
-      cloud-demo:appServiceLabelValue: Taiwan Cloud
-      cloud-demo:webAppName: citydemo-webapp
-      cloud-demo:appServicePlanName: citydemo-appserviceplan
-      cloud-demo:javaVersion: Java|21
-      cloud-demo:appServiceSku: B1
-    ```
-- **.gitignore:**
-  - All `Pulumi.*.yaml` files are ignored except the `Pulumi.dev.yaml.example` template.
-
-## Usage (Pulumi)
-
-1. **Login to Azure**
-
-   ```sh
-   az login
-   ```
-
-2. **Initialize Pulumi project** (first time only)
-
-   ```sh
-   pulumi login
-   pulumi stack init dev
-   # Or use an existing stack. The config file Pulumi.<stack>.yaml will be loaded automatically.
-   ```
-
-3. **Deploy the infrastructure and app**
-
-   ```sh
-   pulumi up
-   # Pulumi will load variables from azure-app-service/infrastructure/pulumi/Pulumi.dev.yaml for the 'dev' stack
-   # You can switch stacks (and thus config) using `pulumi stack select <stack>`
-   ```
-
-   You should see a resource group created and its name/location exported.
-
-4. **Destroy test resources** (optional)
-
-   ```sh
-   pulumi destroy
-   ```
-
----
-
-If you encounter any errors, please provide the error message for troubleshooting assistance.
-
----
-
-## ⚠️ TODO: Next Steps for Key Vault & Environment Variables
-
-1. Implement Key Vault and environment variable integration. Two issues were encountered:
-   - After creating the Key Vault, its name could not be mapped to the App Service environment variable. There was also a naming error:  
-     `azure-native:keyvault:Vault resource 'citydemo-keyvault' has a problem: 'vaultName' does not match expression '^[a-zA-Z0-9-]{3,24}$'`.
-   - Managed Identity must be set up via CLI. Pulumi currently cannot fully automate access policy/permissions for Managed Identity.
-
-2. Next time, please ensure Key Vault name and environment variable consistency, and manually configure Managed Identity permissions using the Azure CLI.
-
----
-
-- **Initial focus:** Azure implementation and connectivity verification
-- **Architecture:** Designed for future extensibility to GCP and AWS
-- **Core features:** Unified resource abstraction, secret/config management, NoSQL database, application hosting, automated deployment
-- **Demo app:** Java Spring Boot, with data access abstraction for cloud-native NoSQL backends
-
-## Project Structure
-
-```
-cloud-demo/
-├── .windsurf/           # Project rules and automation
-│   └── rules
-├── infrastructure/      # Pulumi IaC source code
-│   ├── main.go
-│   ├── go.mod
-│   ├── go.sum
-│   └── Pulumi.yaml
-└── README.md            # Project documentation
+### Azure App Service (Spring Boot)
+```bash
+cd azure-app-service/infrastructure/pulumi
+cp Pulumi.dev.yaml.example Pulumi.dev.yaml
+# Edit Pulumi.dev.yaml with your settings
+pulumi up
+./deploy-app.sh
 ```
 
-## Prerequisites
-- [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli) installed
-- [Pulumi CLI](https://www.pulumi.com/docs/get-started/install/) installed
-- Go 1.21 or later installed
+### Azure Functions (Serverless)
+```bash
+cd azure-functions/infrastructure/pulumi  
+cp Pulumi.dev.yaml.example Pulumi.dev.yaml
+# Edit Pulumi.dev.yaml with your settings
+pulumi up
+./deploy-app.sh
+```
 
-## Pulumi Configuration & Environment Variables
+## Configuration Management
 
-All deployment variables (such as App Service name, label, Java version, etc.) are managed in Pulumi YAML config files. This allows you to easily switch environments and keep sensitive or environment-specific values out of source code.
+Both implementations use configuration files for environment-specific settings:
 
-- **Edit your stack config:**
-  - Copy the example file: `cp infrastructure/Pulumi.dev.yaml.example infrastructure/Pulumi.dev.yaml`
-  - Edit `Pulumi.dev.yaml` as needed. Example:
+- **Pulumi:** `Pulumi.dev.yaml` files for stack configuration
+- **Terraform:** `.tfvars` files for variable configuration
+- **Local Development:** `local.settings.json` (Functions) and `application.properties` (Spring Boot)
 
-    ```yaml
-    config:
-      cloud-demo:appServiceLabelValue: Taiwan Cloud
-      cloud-demo:webAppName: citydemo-webapp
-      cloud-demo:appServicePlanName: citydemo-appserviceplan
-      cloud-demo:javaVersion: Java|21
-      cloud-demo:appServiceSku: B1
-    ```
-- **.gitignore:**
-  - All `Pulumi.*.yaml` files are ignored except the `Pulumi.dev.yaml.example` template.
+## Deployment Scripts
 
-## Usage
+Each implementation includes automated deployment scripts (`deploy-app.sh`) that:
 
-1. **Login to Azure**
+1. Build the Java application using Maven
+2. Create deployment packages
+3. Extract resource information from IaC outputs
+4. Deploy to Azure using Azure CLI
 
-   ```sh
-   az login
-   ```
+## Documentation
 
-2. **Initialize Pulumi project** (first time only)
+For detailed implementation-specific documentation, see:
+- [Azure App Service README](azure-app-service/README.md)
+- [Azure Functions README](azure-functions/README.md)
 
-   ```sh
-   pulumi login
-   pulumi stack init dev
-   # Or use an existing stack. The config file Pulumi.<stack>.yaml will be loaded automatically.
+## Testing Endpoints
 
-   ```
+After deployment, test the applications:
 
-3. **Deploy the infrastructure and app**
+**Azure App Service:**
+```bash
+curl "https://your-webapp.azurewebsites.net/"
+```
 
-   ```sh
-   pulumi up
-   # Pulumi will load variables from infrastructure/Pulumi.dev.yaml for the 'dev' stack
-   # You can switch stacks (and thus config) using `pulumi stack select <stack>`
+**Azure Functions:**
+```bash
+curl "https://your-functions.azurewebsites.net/api/HttpExample?name=World"
+curl "https://your-functions.azurewebsites.net/api/cities"
+curl "https://your-functions.azurewebsites.net/api/config"
+```
 
-   ```
+## Clean Up Resources
 
-   You should see a resource group created and its name/location exported.
+```bash
+# Pulumi
+pulumi destroy
 
-4. **Destroy test resources** (optional)
-
-   ```sh
-   pulumi destroy
-   ```
+# Terraform
+terraform destroy -var-file=environments/dev/main.tfvars
+```
 
 ---
 
-If you encounter any errors, please provide the error message for troubleshooting assistance.
+**Next Steps:** Future plans include extending this foundation to Google Cloud Platform (GCP) and Amazon Web Services (AWS) with similar unified deployment patterns.
