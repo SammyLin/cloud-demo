@@ -1,164 +1,102 @@
-# Commit Message Rules
-- All git commit messages should be written in English.
+# Cross-Cloud Taiwan City Data Service - Windsurf Rules
 
-## Project Structure Models
+## Project Context
+This is a cross-cloud Infrastructure as Code (IaC) demonstration project showcasing Java application deployment patterns on Azure. The project implements both traditional web applications (App Service) and serverless (Functions) architectures.
 
-### Monolithic Structure
-- Single project defines the entire infrastructure and application resources for a vertical service.
-- **Use when**: Working with small teams, early development phases, or when simplicity is paramount.
-- **Location**: Place in a dedicated `/infrastructure` directory at your repository root.
+## Architecture Overview
+- **Dual Platform Strategy**: Azure App Service (Spring Boot) + Azure Functions (Serverless)
+- **Multi-IaC Support**: Both Pulumi (Go) and Terraform implementations
+- **Environment Variables**: Comprehensive configuration management for Azure Functions
+- **Unified Deployment**: Automated build and deployment scripts for each stack
 
-### Micro-Stacks Structure
-- Similar to microservices concept, breaking projects into smaller independently managed components.
-- **Use when**: Working in large organizations, with complex infrastructure, or when different teams handle different components.
-- **Location**: Create separate directories for each micro-stack (e.g., `/networking`, `/kubernetes`, `/databases`).
-
-## Decision Factors for Project Division
-
-- **Use case complexity**: Multiple applications suggest multiple Pulumi projects.
-- **Organization structure**: Align with company/department/team boundaries.
-- **Access control needs**: Use multiple projects with stack permissions and RBAC for fine-grained control.
-- **Resource relationships**: Shared infrastructure layers are best handled in separate projects.
-- **Resource lifecycle**: Resources with shared lifecycles should stay in the same project.
-- **Change frequency**: Separate frequently changing resources from stable ones.
-- **Blast radius**: Limit potential damage from human errors by isolating critical components.
-
-## Implementation Patterns
-
-### Infrastructure, Platform, and Application Separation
-
+## Directory Structure Rules
 ```
-├── infrastructure/         # Base infrastructure (VPC, networking)
-│   ├── main.go
-│   ├── Pulumi.yaml
-│   ├── Pulumi.dev.yaml
-│   ├── Pulumi.staging.yaml
-│   └── Pulumi.prod.yaml
-├── platform/               # Kubernetes cluster and platform services
-│   ├── main.ts
-│   ├── Pulumi.yaml
-│   └── Pulumi.[env].yaml
-└── applications/           # Application-specific resources
-    ├── app1/
-    │   ├── index.ts
-    │   ├── Pulumi.yaml
-    │   └── Pulumi.[env].yaml
-    └── app2/
-        ├── index.ts
-        ├── Pulumi.yaml
-        └── Pulumi.[env].yaml
+cloud-demo/
+├── azure-app-service/          # Traditional web app implementation
+│   ├── applications/taiwan-city-demo/    # Spring Boot source
+│   └── infrastructure/         # Pulumi & Terraform IaC
+│       ├── pulumi/            # Go-based Pulumi code
+│       └── terraform/         # HCL-based Terraform modules
+├── azure-functions/            # Serverless implementation
+│   ├── applications/taiwan-city-functions/  # Java Functions source
+│   └── infrastructure/         # Pulumi & Terraform IaC
+└── CLAUDE.md                   # AI assistant guidelines
 ```
 
-## Internal Code Organization
+## Coding Standards
 
-### TypeScript Projects
+### Infrastructure as Code (IaC)
+- **Pulumi**: Use Go programming language, organize by resource types
+- **Terraform**: Use modular structure with separate modules for each resource type
+- **Configuration**: Store environment-specific values in config files, never hardcode
+- **Outputs**: Always export key resource identifiers for deployment scripts
 
-```typescript
-// index.ts - Main entry point
-import * as pulumi from "@pulumi/pulumi";
-import * as aws from "@pulumi/aws";
-import { createNetworking } from "./networking";
-import { createDatabase } from "./database";
+### Java Applications
+- **Maven**: Use for dependency management and build automation
+- **Environment Variables**: Read configuration from system environment, provide defaults
+- **Error Handling**: Implement proper exception handling with meaningful log messages
+- **API Design**: Follow RESTful conventions, return JSON responses with proper HTTP status codes
 
-// Organize by infrastructure domain
-const network = createNetworking();
-const db = createDatabase(network.subnetIds);
+### Deployment Scripts
+- **Naming**: All deployment scripts must be named `deploy-app.sh`
+- **Logic Flow**: Build → Package → Extract IaC outputs → Deploy to Azure
+- **Error Handling**: Exit with proper status codes, provide informative error messages
+- **Logging**: Use `[INFO]`, `[ERROR]` prefixes for console output
 
-export const vpcId = network.vpcId;
-export const dbEndpoint = db.endpoint;
-```
+## Environment Variables Schema
 
-### Go Projects
+### Azure Functions Configuration
+Required environment variables:
+- `APP_ENVIRONMENT`: string (development|staging|production)
+- `API_VERSION`: string (e.g., "v1", "v2")
+- `DEBUG_MODE`: string ("true"|"false")
+- `MAX_CITIES_COUNT`: string (numeric value as string)
 
-```go
-// main.go - Entry point
-package main
+### IaC Configuration
+- **Pulumi**: Use `Pulumi.dev.yaml` with `azure-functions-demo:` prefix
+- **Terraform**: Use variables.tf with default values and .tfvars override files
+- **Local Development**: Use `local.settings.json` for Azure Functions
 
-import (
-    "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-    "./networking"    // Local package for network resources
-    "./database"      // Local package for database resources
-)
+## API Endpoints Specification
 
-func main() {
-    pulumi.Run(func(ctx *pulumi.Context) error {
-        // Organize by infrastructure domain
-        network, err := networking.CreateNetworking(ctx)
-        if err != nil {
-            return err
-        }
-        
-        _, err = database.CreateDatabase(ctx, database.DatabaseArgs{
-            SubnetIds: network.SubnetIds,
-        })
-        
-        return err
-    })
-}
-```
+### Azure Functions Endpoints
+- `GET /api/HttpExample?name={string}`: Simple hello function
+- `GET /api/cities`: Taiwan cities list (respects MAX_CITIES_COUNT)
+- `GET /api/config`: Environment variables display
 
-## Stack References and Dependencies
+### Response Format
+- Always return JSON with proper Content-Type headers
+- Include environment metadata in responses where applicable
+- Use UTF-8 encoding for Chinese characters
 
-### Managing Cross-Stack Dependencies
+## File Naming Conventions
+- **Configuration files**: Use environment-specific suffixes (e.g., `Pulumi.dev.yaml`)
+- **Java packages**: Follow reverse domain notation (`org.cloud.demo`)
+- **Function names**: Use PascalCase for Azure Functions annotations
+- **Resource names**: Use kebab-case with descriptive prefixes
 
-```typescript
-// In the dependent stack
-import * as pulumi from "@pulumi/pulumi";
+## Git Workflow Rules
+- **Commit Messages**: English only, follow conventional commit format
+- **Branch Strategy**: Work on main branch for this demo project
+- **Ignore Patterns**: All build artifacts (target/), sensitive configs, IDE files
+- **Documentation**: Update README files when adding new features
 
-// Reference outputs from another stack
-const infraStack = new pulumi.StackReference("org/infrastructure/prod");
-const vpcId = infraStack.getOutput("vpcId");
-const subnetIds = infraStack.getOutput("subnetIds");
+## Security Guidelines
+- **Secrets Management**: Never commit credentials or API keys
+- **Environment Variables**: Use for configuration, not secrets
+- **Access Control**: Function apps use anonymous auth level for demo purposes
+- **Resource Isolation**: Each IaC stack manages its own resource group
 
-// Use the referenced outputs
-const cluster = new aws.eks.Cluster("cluster", {
-    vpcConfig: {
-        subnetIds: subnetIds,
-        // ...
-    },
-    // ...
-});
-```
+## Development Workflow
+1. **Infrastructure First**: Deploy IaC resources before application code
+2. **Build Verification**: Always run `mvn clean package` before deployment
+3. **Testing**: Verify endpoints after deployment using curl commands
+4. **Cleanup**: Use `destroy` commands to remove test resources
 
-## Git Repository Alignment
+## Performance Considerations
+- **Azure Functions**: Use consumption plan for cost efficiency
+- **Spring Boot**: Optimize JAR size, minimize dependencies
+- **Storage**: Use Standard_LRS for development environments
+- **Caching**: Consider response caching for production deployments
 
-### For Monolithic Approach
-- Single repository containing all Pulumi code
-- Subdirectories organize by infrastructure domain
-- Common components in shared directories
-
-### For Micro-Stack Approach
-- Multiple repositories (one per Pulumi project)
-- Repository boundaries align with team ownership
-- Cross-stack references managed via stack outputs
-
-## Stack Tagging and Organization
-
-```bash
-# Tag stacks for organization in Pulumi Cloud
-pulumi stack tag set environment dev
-pulumi stack tag set team platform
-pulumi stack tag set costCenter 12345
-```
-
-## Project Initialization Templates
-
-### For New Infrastructure Projects
-
-```bash
-# Standard project structure initialization
-mkdir -p infrastructure/{networking,compute,database}
-cd infrastructure
-pulumi new typescript   # Or your preferred language
-```
-
-## Configuration Management
-
-```
-├── Pulumi.yaml          # Project definition
-├── Pulumi.dev.yaml      # Dev environment config
-├── Pulumi.staging.yaml  # Staging environment config
-└── Pulumi.prod.yaml     # Production environment config
-```
-
-This structure provides a solid foundation for organizing your Pulumi projects, whether you're taking a monolithic or micro-stack approach. Adapt these guidelines to your specific organization and project needs, keeping in mind the key decision factors and best practices outlined above.
+When generating code or making changes, ensure consistency with these patterns and always maintain the dual-implementation strategy (App Service + Functions) with corresponding IaC support.
