@@ -1,5 +1,0 @@
-# Terraform sensitive/auto variable files
-*.auto.tfvars
-*.tfstate
-*.tfstate.*
-.terraform/

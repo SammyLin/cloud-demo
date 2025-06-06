@@ -13,12 +13,12 @@ infrastructure/Pulumi.staging.yaml
 infrastructure/Pulumi.prod.yaml
 
 # Java/Maven
-applications/*/target/
-applications/*/.classpath
-applications/*/.project
-applications/*/.settings/
-applications/*/.idea/
-applications/*/*.iml
+**/target/
+**/.classpath
+**/.project
+**/.settings/
+**/.idea/
+**/*.iml
 
 # OS/Editor
 .idea/
