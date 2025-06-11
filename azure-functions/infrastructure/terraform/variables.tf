@@ -51,3 +51,30 @@ variable "max_cities_count" {
   type        = string
   default     = "50"
 }
+
+# Key Vault variables (optional)
+variable "enable_key_vault" {
+  description = "Enable Key Vault integration"
+  type        = bool
+  default     = false
+}
+
+variable "key_vault_name" {
+  description = "Name of the Key Vault"
+  type        = string
+  default     = "taiwan-func-kv-01"
+}
+
+variable "api_key_value" {
+  description = "The value for the API key secret"
+  type        = string
+  default     = "your-secret-api-key-value"
+  sensitive   = true
+}
+
+variable "database_connection_value" {
+  description = "The value for the database connection secret"
+  type        = string
+  default     = "server=example.com;database=mydb;user=myuser;password=secretpassword"
+  sensitive   = true
+}

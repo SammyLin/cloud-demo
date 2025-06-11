@@ -1,4 +1,18 @@
-# Copy this file to dev.auto.tfvars and fill in your Azure subscription ID
+# Copy this file to dev.auto.tfvars and fill in your configuration
 # This file is ignored by Git for security reasons
 
 subscription_id = "your-azure-subscription-id-here"
+
+# Key Vault configuration (optional)
+enable_key_vault = false
+# key_vault_name = "taiwan-func-kv-01"
+
+# Optional: Override default secret values (only used when enable_key_vault = true)
+# api_key_value = "your-actual-api-key"
+# database_connection_value = "your-actual-database-connection-string"
+
+# Optional: Override environment variables
+# app_environment = "development"
+# api_version = "v1"
+# debug_mode = "true"
+# max_cities_count = "50"

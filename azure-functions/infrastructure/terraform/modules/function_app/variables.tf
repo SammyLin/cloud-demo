@@ -29,3 +29,21 @@ variable "custom_app_settings" {
   type        = map(string)
   default     = {}
 }
+
+variable "enable_key_vault" {
+  description = "Enable Key Vault integration"
+  type        = bool
+  default     = false
+}
+
+variable "user_assigned_identity_id" {
+  description = "The ID of the user assigned managed identity"
+  type        = string
+  default     = null
+}
+
+variable "key_vault_name" {
+  description = "The name of the Key Vault"
+  type        = string
+  default     = null
+}
