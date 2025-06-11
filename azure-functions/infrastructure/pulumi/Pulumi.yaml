@@ -1,6 +1,6 @@
 name: azure-functions-demo
-runtime: go
-description: Azure Functions infrastructure demo using Pulumi and Go
+runtime: nodejs
+description: Azure Functions infrastructure demo using Pulumi and TypeScript
 template:
   config:
     azure-native:location:

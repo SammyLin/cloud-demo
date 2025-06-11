@@ -13,7 +13,8 @@ This is a cross-cloud Infrastructure as Code (IaC) demo project that provisions 
 - **Unified Deployment**: Each IaC stack has its own `deploy-app.sh` script that builds the Java application and deploys it
 - **Configuration Management**: Pulumi uses YAML config files (`Pulumi.dev.yaml`) while Terraform uses `.tfvars` files
 - **Environment Variables Support**: Azure Functions implementation includes comprehensive environment variables configuration
-- **Resource Abstraction**: Terraform uses modular structure with separate modules for resource groups, app service plans, web apps, and function apps
+- **Resource Abstraction**: Terraform uses modular structure with separate modules for resource groups, app service plans, web apps, function apps, and key vault
+- **Security**: Azure Functions implementation includes Azure Key Vault integration with managed identity for secure secret management
 
 ## Common Commands
 
@@ -123,6 +124,8 @@ terraform destroy -var-file=environments/dev/main.tfvars
   - `functionAppName`: Azure Function App name
   - `storageAccountName`: Storage account name
   - `location`: Azure region
+  - `enableKeyVault`: Enable Key Vault integration (true/false, default: false)
+  - `keyVaultName`: Azure Key Vault name (required if enableKeyVault is true)
   - Environment variables:
     - `appEnvironment`: Application environment (development/staging/production)
     - `apiVersion`: API version
@@ -134,6 +137,10 @@ terraform destroy -var-file=environments/dev/main.tfvars
 - Or set environment variable: `export TF_VAR_subscription_id=your-id`
 - For Azure Functions, additional variables available:
   - `app_environment`, `api_version`, `debug_mode`, `max_cities_count`
+  - `enable_key_vault`: Enable Key Vault integration (true/false, default: false)
+  - `key_vault_name`: Azure Key Vault name (required if enable_key_vault is true)
+  - `api_key_value`: Secret value for API key (sensitive, only used when enable_key_vault is true)
+  - `database_connection_value`: Secret value for database connection (sensitive, only used when enable_key_vault is true)
 
 ## Prerequisites
 - Azure CLI (`az`) logged in with `az login`
@@ -180,12 +187,83 @@ The Azure Functions implementation supports environment variables for configurat
 - `DEBUG_MODE`: Enable detailed logging when set to "true"
 - `MAX_CITIES_COUNT`: Maximum number of cities returned by the `/api/cities` endpoint
 
+## Azure Key Vault Integration (Optional)
+
+The Azure Functions implementation includes optional Azure Key Vault integration for secure secret management. This feature can be enabled or disabled based on your requirements.
+
+### Enabling Key Vault Integration
+
+#### Pulumi
+Set `enableKeyVault: true` and provide `keyVaultName` in your `Pulumi.dev.yaml`:
+```yaml
+azure-functions-demo:enableKeyVault: true
+azure-functions-demo:keyVaultName: taiwan-func-kv-01
+```
+
+#### Terraform
+Set `enable_key_vault = true` and provide `key_vault_name` in your `dev.auto.tfvars`:
+```hcl
+enable_key_vault = true
+key_vault_name = "taiwan-func-kv-01"
+```
+
+### Key Features
+- **Optional Integration**: Key Vault can be enabled/disabled without changing application code
+- **Managed Identity**: Uses user-assigned managed identity for secure authentication to Key Vault
+- **Automatic Secret Resolution**: Environment variables can reference Key Vault secrets using `@Microsoft.KeyVault()` syntax
+- **Direct SDK Access**: Java SDK for Azure Key Vault allows programmatic access to secrets
+- **Secret Masking**: Sensitive values are masked in logs and API responses for security
+- **Graceful Degradation**: Application works with or without Key Vault enabled
+
+### How It Works
+
+#### Method 1: Key Vault References (Recommended)
+When Key Vault is enabled, environment variables in the Function App can reference Key Vault secrets:
+```
+API_KEY=@Microsoft.KeyVault(VaultName=your-vault;SecretName=api-key)
+```
+Azure automatically resolves these references using the Function App's managed identity.
+
+#### Method 2: Direct SDK Access
+Java code can directly access Key Vault using the Azure SDK:
+```java
+SecretClient secretClient = new SecretClientBuilder()
+    .vaultUrl("https://your-vault.vault.azure.net/")
+    .credential(new DefaultAzureCredentialBuilder().build())
+    .buildClient();
+```
+
+### Configuration Behavior
+- **When Key Vault is enabled**: Both Pulumi and Terraform create:
+  - User-assigned managed identity (for direct SDK access)
+  - System-assigned managed identity (for Key Vault references in app settings)
+  - Key Vault with appropriate access policies for both identities
+  - Sample secrets (api-key, database-connection)
+  - Function App with Key Vault references and both managed identities
+- **When Key Vault is disabled**: Function App is created with only system-assigned managed identity (for future use)
+
+### Security Best Practices
+- Secrets are never logged in plain text
+- API responses mask sensitive values
+- Access is controlled through Azure RBAC and Key Vault access policies
+- **Dual Managed Identity**: System-assigned for Key Vault references, User-assigned for SDK access
+- Managed identities eliminate need for stored credentials
+- Application gracefully handles missing Key Vault configuration
+- Tenant ID is automatically detected from current Azure context
+
+### Important Notes
+- **System-assigned managed identity** is required for `@Microsoft.KeyVault()` references in app settings
+- **User-assigned managed identity** is used for direct Azure SDK access in Java code
+- Both identities are automatically configured with appropriate Key Vault permissions
+- Tenant ID issues are resolved by dynamic detection from Azure context
+
 ### Available Endpoints
 
 #### Azure Functions
 - `/api/HttpExample?name=World` - Simple hello world function
 - `/api/cities` - Taiwan cities list with environment-based configuration
 - `/api/config` - Display current environment variables
+- `/api/secrets` - Demonstrate Key Vault integration (shows masked secret values or disabled message)
 
 #### Azure App Service
 - `/` - Spring Boot application endpoints
@@ -211,4 +289,5 @@ FUNCTION_URL=$(pulumi stack output functionAppUrl)  # or terraform output
 curl "$FUNCTION_URL/api/HttpExample?name=World"
 curl "$FUNCTION_URL/api/cities"
 curl "$FUNCTION_URL/api/config"
+curl "$FUNCTION_URL/api/secrets"
 ```

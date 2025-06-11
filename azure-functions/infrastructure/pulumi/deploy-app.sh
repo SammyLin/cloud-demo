@@ -58,6 +58,42 @@ az functionapp deployment source config-zip \
 echo ""
 echo "[INFO] Deployment complete!"
 echo "[INFO] Function App URL: $FUNCTION_APP_URL"
-echo "[INFO] Test endpoints:"
-echo "  - GET $FUNCTION_APP_URL/api/HttpExample?name=World"
-echo "  - GET $FUNCTION_APP_URL/api/cities"
+
+# Check if Key Vault is enabled
+KEY_VAULT_ENABLED=$(pulumi stack output keyVaultName 2>/dev/null && echo "true" || echo "false")
+
+echo ""
+echo "=========================================="
+echo "🎯 TEST ENDPOINTS"
+echo "=========================================="
+echo ""
+
+echo "1️⃣  Basic HTTP Function:"
+echo "   curl \"$FUNCTION_APP_URL/api/HttpExample?name=TypeScript\""
+echo ""
+
+echo "2️⃣  Taiwan Cities API:"
+echo "   curl \"$FUNCTION_APP_URL/api/cities\""
+echo ""
+
+echo "3️⃣  Environment Configuration:"
+echo "   curl \"$FUNCTION_APP_URL/api/config\""
+echo ""
+
+echo "4️⃣  Key Vault Secrets:"
+echo "   curl \"$FUNCTION_APP_URL/api/secrets\""
+if [ "$KEY_VAULT_ENABLED" = "true" ]; then
+    echo "   (Key Vault enabled ✅)"
+    
+    KEYVAULT_COMMAND=$(pulumi stack output keyVaultAccessPolicyCommand 2>/dev/null || echo "")
+    if [ -n "$KEYVAULT_COMMAND" ]; then
+        echo ""
+        echo "🔑 Key Vault Access Policy Setup:"
+        echo "   $KEYVAULT_COMMAND"
+    fi
+else
+    echo "   (Key Vault disabled - will return disabled message)"
+fi
+echo ""
+
+echo "=========================================="

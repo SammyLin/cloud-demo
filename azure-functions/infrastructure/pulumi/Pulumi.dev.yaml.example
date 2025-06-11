@@ -3,6 +3,10 @@ config:
   azure-functions-demo:functionAppName: taiwan-city-functions
   azure-functions-demo:storageAccountName: twfuncstorage01
   azure-functions-demo:location: eastasia
+  # Key Vault configuration (optional)
+  azure-functions-demo:enableKeyVault: true
+  azure-functions-demo:keyVaultName: taiwan-func-kv-01
+  # Note: Tenant ID is automatically detected from current Azure context
   # Custom environment variables
   azure-functions-demo:appEnvironment: development
   azure-functions-demo:apiVersion: v1

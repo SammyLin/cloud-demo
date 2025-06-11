@@ -4,6 +4,8 @@ config:
   azure-functions-demo:storageAccountName: twfuncstorage
   azure-functions-demo:location: eastasia
   # Custom environment variables
+  azure-functions-demo:enableKeyVault: "true"
+  azure-functions-demo:keyVaultName: taiwanfunckv01
   azure-functions-demo:appEnvironment: development
   azure-functions-demo:apiVersion: v1
   azure-functions-demo:debugMode: "true"
