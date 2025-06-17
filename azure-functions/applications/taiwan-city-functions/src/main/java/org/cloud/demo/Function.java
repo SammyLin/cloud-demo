@@ -1,21 +1,52 @@
 package org.cloud.demo;
 
-import com.azure.identity.DefaultAzureCredentialBuilder;
-import com.azure.security.keyvault.secrets.SecretClient;
-import com.azure.security.keyvault.secrets.SecretClientBuilder;
-import com.azure.security.keyvault.secrets.models.KeyVaultSecret;
 import com.microsoft.azure.functions.ExecutionContext;
 import com.microsoft.azure.functions.HttpMethod;
 import com.microsoft.azure.functions.HttpRequestMessage;
 import com.microsoft.azure.functions.HttpResponseMessage;
 import com.microsoft.azure.functions.HttpStatus;
 import com.microsoft.azure.functions.annotation.AuthorizationLevel;
+import com.microsoft.azure.functions.annotation.BindingName;
+import com.microsoft.azure.functions.annotation.BlobTrigger;
 import com.microsoft.azure.functions.annotation.FunctionName;
 import com.microsoft.azure.functions.annotation.HttpTrigger;
+import org.cloud.demo.config.ApplicationConfig;
+import org.cloud.demo.model.CsvData;
+import org.cloud.demo.model.ProcessingResult;
+import org.cloud.demo.service.CityService;
+import org.cloud.demo.service.CsvProcessingService;
+import org.cloud.demo.service.DatabaseService;
+import org.cloud.demo.service.KeyVaultService;
+import org.cloud.demo.service.StorageService;
+import org.cloud.demo.util.ResponseUtil;
+import org.bson.Document;
 
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
+/**
+ * Azure Functions Main Class
+ * Contains all HTTP triggers and Blob trigger functions
+ */
 public class Function {
+    
+    private final ApplicationConfig config;
+    private final CityService cityService;
+    private final KeyVaultService keyVaultService;
+    private final CsvProcessingService csvProcessingService;
+    private final DatabaseService databaseService;
+    private final StorageService storageService;
+    
+    public Function() {
+        this.config = new ApplicationConfig();
+        this.cityService = new CityService(config);
+        this.keyVaultService = new KeyVaultService(config);
+        this.csvProcessingService = new CsvProcessingService();
+        this.databaseService = new DatabaseService(config);
+        this.storageService = new StorageService(config);
+    }
+    
     @FunctionName("HttpExample")
     public HttpResponseMessage run(
             @HttpTrigger(
@@ -31,9 +62,10 @@ public class Function {
         final String name = request.getBody().orElse(query);
 
         if (name == null) {
-            return request.createResponseBuilder(HttpStatus.BAD_REQUEST).body("Please pass a name on the query string or in the request body").build();
+            return ResponseUtil.createErrorResponse(request, HttpStatus.BAD_REQUEST, 
+                "Please pass a name on the query string or in the request body");
         } else {
-            return request.createResponseBuilder(HttpStatus.OK).body("Hello, " + name).build();
+            return ResponseUtil.createSuccessResponse(request, "Hello, " + name, "Request processed successfully");
         }
     }
 
@@ -48,60 +80,18 @@ public class Function {
             final ExecutionContext context) {
         context.getLogger().info("Taiwan cities API called.");
 
-        // Read environment variables
-        String appEnvironment = System.getenv("APP_ENVIRONMENT");
-        String apiVersion = System.getenv("API_VERSION");
-        String debugMode = System.getenv("DEBUG_MODE");
-        String maxCitiesCountStr = System.getenv("MAX_CITIES_COUNT");
-
         // Log environment variables if debug mode is enabled
-        if ("true".equalsIgnoreCase(debugMode)) {
-            context.getLogger().info("Environment: " + appEnvironment);
-            context.getLogger().info("API Version: " + apiVersion);
-            context.getLogger().info("Debug Mode: " + debugMode);
-            context.getLogger().info("Max Cities Count: " + maxCitiesCountStr);
+        if (config.isDebugMode()) {
+            context.getLogger().info("Environment: " + config.getEnvironment());
+            context.getLogger().info("API Version: " + config.getApiVersion());
+            context.getLogger().info("Debug Mode: " + config.isDebugMode());
+            context.getLogger().info("Max Cities Count: " + config.getMaxCitiesCount());
         }
 
-        String[] allCities = {
-            "台北市", "新北市", "桃園市", "台中市", "台南市", "高雄市",
-            "基隆市", "新竹市", "嘉義市", "新竹縣", "苗栗縣", "彰化縣",
-            "南投縣", "雲林縣", "嘉義縣", "屏東縣", "宜蘭縣", "花蓮縣",
-            "台東縣", "澎湖縣", "金門縣", "連江縣"
-        };
-
-        // Apply max cities limit from environment variable
-        int maxCitiesCount = 50; // default
-        if (maxCitiesCountStr != null && !maxCitiesCountStr.isEmpty()) {
-            try {
-                maxCitiesCount = Integer.parseInt(maxCitiesCountStr);
-            } catch (NumberFormatException e) {
-                context.getLogger().warning("Invalid MAX_CITIES_COUNT value: " + maxCitiesCountStr);
-            }
-        }
-
-        // Limit cities based on environment variable
-        String[] cities = allCities;
-        if (maxCitiesCount > 0 && maxCitiesCount < allCities.length) {
-            cities = java.util.Arrays.copyOf(allCities, maxCitiesCount);
-        }
-
-        // Build response with metadata
-        String citiesJson = String.join(",", java.util.Arrays.stream(cities)
-            .map(city -> "\"" + city + "\"")
-            .toArray(String[]::new));
-
-        String responseBody = String.format(
-            "{\"environment\": \"%s\", \"version\": \"%s\", \"count\": %d, \"cities\": [%s]}",
-            appEnvironment != null ? appEnvironment : "unknown",
-            apiVersion != null ? apiVersion : "unknown",
-            cities.length,
-            citiesJson
-        );
-
-        return request.createResponseBuilder(HttpStatus.OK)
-                .header("Content-Type", "application/json; charset=utf-8")
-                .body(responseBody)
-                .build();
+        List<String> cities = cityService.getCities();
+        
+        return ResponseUtil.createCitiesResponse(request, config.getEnvironment(), 
+            config.getApiVersion(), cities);
     }
 
     @FunctionName("Config")
@@ -115,24 +105,14 @@ public class Function {
             final ExecutionContext context) {
         context.getLogger().info("Config API called.");
 
-        // Read all environment variables
-        String appEnvironment = System.getenv("APP_ENVIRONMENT");
-        String apiVersion = System.getenv("API_VERSION");
-        String debugMode = System.getenv("DEBUG_MODE");
-        String maxCitiesCount = System.getenv("MAX_CITIES_COUNT");
-
-        String responseBody = String.format(
-            "{\"config\": {\"environment\": \"%s\", \"apiVersion\": \"%s\", \"debugMode\": \"%s\", \"maxCitiesCount\": \"%s\"}}",
-            appEnvironment != null ? appEnvironment : "not set",
-            apiVersion != null ? apiVersion : "not set",
-            debugMode != null ? debugMode : "not set",
-            maxCitiesCount != null ? maxCitiesCount : "not set"
+        Map<String, String> configData = Map.of(
+            "environment", config.getEnvironment() != null ? config.getEnvironment() : "not set",
+            "apiVersion", config.getApiVersion() != null ? config.getApiVersion() : "not set",
+            "debugMode", String.valueOf(config.isDebugMode()),
+            "maxCitiesCount", String.valueOf(config.getMaxCitiesCount())
         );
 
-        return request.createResponseBuilder(HttpStatus.OK)
-                .header("Content-Type", "application/json; charset=utf-8")
-                .body(responseBody)
-                .build();
+        return ResponseUtil.createConfigResponse(request, configData);
     }
 
     @FunctionName("KeyVaultSecrets")
@@ -146,97 +126,113 @@ public class Function {
             final ExecutionContext context) {
         context.getLogger().info("Key Vault secrets API called.");
 
-        // Check if Key Vault is enabled
-        String keyVaultEnabled = System.getenv("KEY_VAULT_ENABLED");
-        boolean isKeyVaultEnabled = "true".equalsIgnoreCase(keyVaultEnabled);
+        Map<String, Object> secrets = keyVaultService.getKeyVaultSecrets(context);
+        
+        return ResponseUtil.createSuccessResponse(request, secrets, "Key Vault secrets retrieved successfully");
+    }
 
-        if (!isKeyVaultEnabled) {
-            String responseBody = "{\"message\": \"Key Vault integration is disabled\", \"key_vault_enabled\": false}";
-            return request.createResponseBuilder(HttpStatus.OK)
-                    .header("Content-Type", "application/json; charset=utf-8")
-                    .body(responseBody)
-                    .build();
-        }
-
+    @FunctionName("CsvBlobProcessor")
+    public void processCsvBlob(
+            @BlobTrigger(
+                name = "csvBlob",
+                dataType = "string",
+                path = "csv-uploads/{name}",
+                connection = "SFTP_STORAGE_CONNECTION")
+                String csvContent,
+            @BindingName("name") String fileName,
+            final ExecutionContext context) {
+        
+        context.getLogger().info("Processing CSV file: " + fileName + " (" + csvContent.length() + " characters)");
+        
+        boolean success = false;
+        String errorLog = "";
+        
         try {
-            // Method 1: Using environment variables that reference Key Vault (recommended)
-            String apiKeyFromEnv = System.getenv("API_KEY");
-            String dbConnectionFromEnv = System.getenv("DATABASE_CONNECTION");
-
-            // Method 2: Direct Key Vault access using SDK (for demonstration)
-            String keyVaultName = System.getenv("KEY_VAULT_NAME");
-            String apiKeyDirect = null;
-            String dbConnectionDirect = null;
-
-            if (keyVaultName != null && !keyVaultName.isEmpty()) {
-                String keyVaultUrl = "https://" + keyVaultName + ".vault.azure.net/";
-                try {
-                    SecretClient secretClient = new SecretClientBuilder()
-                        .vaultUrl(keyVaultUrl)
-                        .credential(new DefaultAzureCredentialBuilder().build())
-                        .buildClient();
-
-                    KeyVaultSecret apiKeySecret = secretClient.getSecret("api-key");
-                    KeyVaultSecret dbConnectionSecret = secretClient.getSecret("database-connection");
-                    
-                    apiKeyDirect = apiKeySecret.getValue();
-                    dbConnectionDirect = dbConnectionSecret.getValue();
-                } catch (Exception e) {
-                    context.getLogger().warning("Direct Key Vault access failed: " + e.getMessage());
-                    apiKeyDirect = "Direct access failed: " + e.getMessage();
-                    dbConnectionDirect = "Direct access failed: " + e.getMessage();
+            // Process CSV data
+            ProcessingResult result = csvProcessingService.processCsvContent(csvContent, fileName, context);
+            
+            if (result.isSuccess()) {
+                // Save processed data to database
+                List<CsvData> processedData = result.getProcessedData();
+                if (processedData != null && !processedData.isEmpty()) {
+                    try {
+                        databaseService.saveCsvData(processedData, context);
+                        context.getLogger().info("Successfully saved " + processedData.size() + " records to database");
+                    } catch (Exception e) {
+                        context.getLogger().severe("Failed to save data to database: " + e.getMessage());
+                        // Continue with file processing even if database save fails
+                    }
                 }
+                
+                success = true;
+                context.getLogger().info("CSV processing completed successfully. Processed " + result.getProcessedCount() + " records from file: " + fileName);
             } else {
-                apiKeyDirect = "Key Vault name not configured";
-                dbConnectionDirect = "Key Vault name not configured";
+                throw new RuntimeException(result.getErrorMessage());
             }
 
-            String responseBody = String.format(
-                "{\"key_vault_enabled\": true, \"secrets\": {" +
-                "\"method1_env_references\": {" +
-                "\"api_key\": \"%s\", " +
-                "\"database_connection\": \"%s\"" +
-                "}, " +
-                "\"method2_direct_access\": {" +
-                "\"api_key\": \"%s\", " +
-                "\"database_connection\": \"%s\"" +
-                "}, " +
-                "\"note\": \"Method 1 uses Key Vault references in app settings, Method 2 uses direct SDK access\"" +
-                "}}",
-                apiKeyFromEnv != null ? maskSecret(apiKeyFromEnv) : "not set",
-                dbConnectionFromEnv != null ? maskSecret(dbConnectionFromEnv) : "not set",
-                apiKeyDirect != null ? maskSecret(apiKeyDirect) : "not set",
-                dbConnectionDirect != null ? maskSecret(dbConnectionDirect) : "not set"
-            );
-
-            return request.createResponseBuilder(HttpStatus.OK)
-                    .header("Content-Type", "application/json; charset=utf-8")
-                    .body(responseBody)
-                    .build();
-
         } catch (Exception e) {
-            context.getLogger().severe("Error accessing Key Vault: " + e.getMessage());
-            String errorResponse = String.format(
-                "{\"error\": \"Failed to access Key Vault\", \"message\": \"%s\", \"key_vault_enabled\": true}",
-                e.getMessage()
-            );
-            return request.createResponseBuilder(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .header("Content-Type", "application/json; charset=utf-8")
-                    .body(errorResponse)
-                    .build();
+            success = false;
+            String errorMessage = "Error processing CSV file '" + fileName + "': " + e.getMessage();
+            context.getLogger().severe(errorMessage);
+            errorLog = csvProcessingService.generateProcessingLog(fileName, 
+                ProcessingResult.failure(errorMessage), e.getMessage());
+        }
+        
+        // Move file to appropriate folder
+        try {
+            storageService.moveFileAfterProcessing(fileName, csvContent, success, errorLog, context);
+        } catch (Exception e) {
+            context.getLogger().severe("Failed to move file after processing: " + e.getMessage());
         }
     }
 
-    /**
-     * Masks sensitive information for logging/display purposes
-     */
-    private String maskSecret(String secret) {
-        if (secret == null || secret.isEmpty()) {
-            return "not set";
+    @FunctionName("DataReader")
+    public HttpResponseMessage readData(
+            @HttpTrigger(
+                name = "req",
+                methods = {HttpMethod.GET},
+                authLevel = AuthorizationLevel.ANONYMOUS,
+                route = "data")
+                HttpRequestMessage<Optional<String>> request,
+            final ExecutionContext context) {
+        context.getLogger().info("Data reader API called.");
+
+        try {
+            List<Document> data = databaseService.readDataFromDatabase(context);
+            return ResponseUtil.createDataResponse(request, data);
+
+        } catch (Exception e) {
+            context.getLogger().severe("Error reading data: " + e.getMessage());
+            return ResponseUtil.createErrorResponse(request, HttpStatus.INTERNAL_SERVER_ERROR, 
+                "Failed to read data: " + e.getMessage());
         }
-        if (secret.length() <= 4) {
-            return "****";
+    }
+
+    @FunctionName("QueryData")
+    public HttpResponseMessage queryData(
+            @HttpTrigger(
+                name = "req",
+                methods = {HttpMethod.GET},
+                authLevel = AuthorizationLevel.ANONYMOUS,
+                route = "query")
+                HttpRequestMessage<Optional<String>> request,
+            final ExecutionContext context) {
+        context.getLogger().info("Query data API called.");
+
+        try {
+            // Parse query parameters
+            String id = request.getQueryParameters().get("id");
+            String fileName = request.getQueryParameters().get("fileName");
+            String limitStr = request.getQueryParameters().get("limit");
+            
+            List<Document> data = databaseService.queryDataFromDatabase(id, fileName, limitStr, context);
+            
+            return ResponseUtil.createQueryResponse(request, id, fileName, limitStr, data);
+
+        } catch (Exception e) {
+            context.getLogger().severe("Error querying data: " + e.getMessage());
+            return ResponseUtil.createErrorResponse(request, HttpStatus.INTERNAL_SERVER_ERROR, 
+                "Failed to query data: " + e.getMessage());
         }
-        return secret.substring(0, 2) + "****" + secret.substring(secret.length() - 2);
     }
 }
