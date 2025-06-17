@@ -1,0 +1,61 @@
+# Azure Functions Project - Terraform Variables Example
+# Based on Public Cloud Platform Resource Naming Standards
+
+# Required: Azure subscription ID
+subscription_id = "your-subscription-id-here"
+
+# Environment and Region Configuration
+environment = "dev"  # Options: dev, tst, prd
+region      = "twn"  # Options: twn, hk, sg
+
+# Application Configuration
+application = "twdemo"  # Application name
+cips        = "mcips"   # CIPS identifier
+description = "functions"  # Resource description
+
+# Legacy variables (optional - will be computed from naming standard if not provided)
+# resource_group_name = "rg-twdemo-mcips-dev-twn-functions"
+# location = "East Asia"
+# function_app_name = "func-twdemo-mcips-dev-twn-citydata"
+# storage_account_name = "satwmcipsdevtwnfunc01"
+# key_vault_name = "kv-twdemo-mcips-dev-twn-secrets"
+# cosmos_db_account_name = "cosmos-twdemo-mcips-dev-twn-data"
+
+# Application Settings
+app_environment  = "development"
+api_version      = "v1"
+debug_mode       = "true"
+max_cities_count = "50"
+data_limit       = "100"
+
+# Key Vault Configuration (Optional)
+enable_key_vault = false
+api_key_value    = "your-secret-api-key-value"
+database_connection_value = "server=example.com;database=mydb;user=myuser;password=secretpassword"
+
+# Cosmos DB Configuration (Optional)
+enable_cosmos_db     = false
+cosmos_database_name = "csvdata"
+cosmos_collection_name = "records"
+
+# Example configurations for different environments:
+
+# Development Environment
+# environment = "dev"
+# region = "twn"
+# debug_mode = "true"
+
+# Testing Environment
+# environment = "tst"
+# region = "twn"
+# debug_mode = "false"
+# enable_key_vault = true
+# enable_cosmos_db = true
+
+# Production Environment
+# environment = "prd"
+# region = "twn"
+# debug_mode = "false"
+# enable_key_vault = true
+# enable_cosmos_db = true
+# app_environment = "production" 

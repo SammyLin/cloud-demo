@@ -5,7 +5,7 @@ output "name" {
 
 output "default_hostname" {
   description = "Default hostname of the Function App"
-  value       = "https://${azurerm_linux_function_app.main.default_hostname}"
+  value       = azurerm_linux_function_app.main.default_hostname
 }
 
 output "id" {

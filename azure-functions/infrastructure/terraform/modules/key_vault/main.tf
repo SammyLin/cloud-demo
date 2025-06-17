@@ -1,16 +1,5 @@
 data "azurerm_client_config" "current" {}
 
-resource "azurerm_user_assigned_identity" "main" {
-  name                = "${var.name}-identity"
-  location            = var.location
-  resource_group_name = var.resource_group_name
-
-  tags = {
-    Environment = "dev"
-    Project     = "Taiwan Functions Demo"
-  }
-}
-
 resource "azurerm_key_vault" "main" {
   name                = var.name
   location            = var.location
@@ -21,17 +10,6 @@ resource "azurerm_key_vault" "main" {
   purge_protection_enabled = false
 
   sku_name = "standard"
-
-  # Access policy for User Assigned Identity
-  access_policy {
-    tenant_id = data.azurerm_client_config.current.tenant_id
-    object_id = azurerm_user_assigned_identity.main.principal_id
-
-    secret_permissions = [
-      "Get",
-      "List",
-    ]
-  }
 
   # Allow current user to manage secrets for deployment
   access_policy {
@@ -50,7 +28,7 @@ resource "azurerm_key_vault" "main" {
 
   tags = {
     Environment = "dev"
-    Project     = "Taiwan Functions Demo"
+    Project     = "Taiwan Demo Functions"
   }
 }
 

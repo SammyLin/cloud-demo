@@ -14,3 +14,4 @@ output "connection_string" {
   value       = "DefaultEndpointsProtocol=https;AccountName=${azurerm_storage_account.main.name};AccountKey=${azurerm_storage_account.main.primary_access_key};EndpointSuffix=core.windows.net"
   sensitive   = true
 }
+

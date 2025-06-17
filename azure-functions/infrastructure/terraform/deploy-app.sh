@@ -34,9 +34,10 @@ if ! command -v terraform &> /dev/null; then
   exit 1
 fi
 
-RESOURCE_GROUP=$(terraform output -raw resource_group_name -chdir="$TERRAFORM_DIR")
-FUNCTION_APP_NAME=$(terraform output -raw function_app_name -chdir="$TERRAFORM_DIR")
-FUNCTION_APP_URL=$(terraform output -raw function_app_url -chdir="$TERRAFORM_DIR")
+cd "$TERRAFORM_DIR"
+RESOURCE_GROUP=$(terraform output -raw resource_group_name)
+FUNCTION_APP_NAME=$(terraform output -raw function_app_name)
+FUNCTION_APP_URL=$(terraform output -raw function_app_url)
 
 echo "[INFO] Resource Group: $RESOURCE_GROUP"
 echo "[INFO] Function App Name: $FUNCTION_APP_NAME"
@@ -56,6 +57,24 @@ az functionapp deployment source config-zip \
 echo ""
 echo "[INFO] Deployment complete!"
 echo "[INFO] Function App URL: $FUNCTION_APP_URL"
-echo "[INFO] Test endpoints:"
+echo "[INFO] Available API endpoints:"
+echo ""
+echo "Core APIs:"
 echo "  - GET $FUNCTION_APP_URL/api/HttpExample?name=World"
 echo "  - GET $FUNCTION_APP_URL/api/cities"
+echo "  - GET $FUNCTION_APP_URL/api/config"
+echo "  - GET $FUNCTION_APP_URL/api/secrets"
+echo ""
+echo "CSV Data APIs (if Cosmos DB enabled):"
+echo "  - GET $FUNCTION_APP_URL/api/data"
+echo "  - GET $FUNCTION_APP_URL/api/query"
+echo "  - GET $FUNCTION_APP_URL/api/query?id=001"
+echo "  - GET $FUNCTION_APP_URL/api/query?fileName=test_data_valid"
+echo "  - GET $FUNCTION_APP_URL/api/query?limit=10"
+echo ""
+echo "CSV Processing Workflow:"
+echo "  1. Upload CSV files to: $(terraform output -raw sftp_storage_account_name)/csv-uploads"
+echo "  2. Files are automatically processed by CsvBlobProcessor function"
+echo "  3. Success files moved to: csv-success container"
+echo "  4. Failed files moved to: csv-failure container (with error logs)"
+echo "  5. Processed data available via /api/data and /api/query endpoints"
