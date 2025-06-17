@@ -18,21 +18,102 @@ provider "azurerm" {
 
 module "resource_group" {
   source   = "./modules/resource_group"
-  name     = var.resource_group_name
-  location = var.location
+  name     = local.resource_group_name
+  location = local.location
 }
 
 module "storage_account" {
   source              = "./modules/storage_account"
-  name                = var.storage_account_name
+  name                = local.storage_account_name
   resource_group_name = module.resource_group.name
   location            = module.resource_group.location
+}
+
+# Create separate SFTP-enabled storage account for CSV processing
+resource "azurerm_storage_account" "sftp_storage" {
+  name                     = local.sftp_storage_name
+  resource_group_name      = module.resource_group.name
+  location                 = module.resource_group.location
+  account_tier             = "Standard"
+  account_replication_type = "LRS"
+  account_kind             = "StorageV2"
+
+  # Enable SFTP support
+  is_hns_enabled = true # Required for SFTP
+  sftp_enabled   = true # Enable SFTP
+
+  # Basic security settings
+  min_tls_version                 = "TLS1_2"
+  shared_access_key_enabled       = true
+  public_network_access_enabled   = true
+  allow_nested_items_to_be_public = true
+  https_traffic_only_enabled      = false
+
+  tags = merge(local.standard_tags, {
+    Component = "sftp-storage"
+    Purpose   = "CSV file processing"
+  })
+}
+
+# Create SFTP user
+resource "azurerm_storage_account_local_user" "sftp_user" {
+  name                 = "sftp${substr(var.application, 0, 3)}${var.cips}${var.environment}${var.region}user"
+  storage_account_id   = azurerm_storage_account.sftp_storage.id
+  ssh_key_enabled      = true
+  ssh_password_enabled = false
+  home_directory       = "csv-uploads"
+
+  ssh_authorized_key {
+    key         = var.sftp_ssh_public_key
+    description = "Demo SSH key for SFTP access"
+  }
+
+  permission_scope {
+    permissions {
+      create = true
+      delete = true
+      list   = true
+      read   = true
+      write  = true
+    }
+    service       = "blob"
+    resource_name = "csv-uploads"
+  }
+}
+
+# Create blob containers for CSV processing workflow on SFTP storage
+resource "azurerm_storage_container" "csv_uploads" {
+  name                  = "csv-uploads"
+  storage_account_name  = azurerm_storage_account.sftp_storage.name
+  container_access_type = "private"
+}
+
+resource "azurerm_storage_container" "csv_success" {
+  name                  = "csv-success"
+  storage_account_name  = azurerm_storage_account.sftp_storage.name
+  container_access_type = "private"
+}
+
+resource "azurerm_storage_container" "csv_failure" {
+  name                  = "csv-failure"
+  storage_account_name  = azurerm_storage_account.sftp_storage.name
+  container_access_type = "private"
+}
+
+module "cosmos_db" {
+  count               = var.enable_cosmos_db ? 1 : 0
+  source              = "./modules/cosmos_db"
+  name                = local.cosmos_db_account_name
+  resource_group_name = module.resource_group.name
+  location            = module.resource_group.location
+  database_name       = local.cosmos_database_name
+  collection_name     = local.cosmos_collection_name
 }
 
 module "key_vault" {
   count                                 = var.enable_key_vault ? 1 : 0
   source                                = "./modules/key_vault"
-  name                                  = var.key_vault_name
+  name                                  = local.key_vault_name
   resource_group_name                   = module.resource_group.name
   location                              = module.resource_group.location
   api_key_value                         = var.api_key_value
@@ -41,23 +122,31 @@ module "key_vault" {
 }
 
 module "function_app" {
-  source                        = "./modules/function_app"
-  name                          = var.function_app_name
-  resource_group_name           = module.resource_group.name
-  location                      = module.resource_group.location
-  storage_account_name          = module.storage_account.name
-  storage_connection_string     = module.storage_account.connection_string
-  enable_key_vault              = var.enable_key_vault
-  user_assigned_identity_id     = var.enable_key_vault ? module.key_vault[0].user_assigned_identity_id : null
-  key_vault_name                = var.enable_key_vault ? module.key_vault[0].key_vault_name : null
-  custom_app_settings           = merge({
+  source                     = "./modules/function_app"
+  name                       = local.function_app_name
+  resource_group_name        = module.resource_group.name
+  location                   = module.resource_group.location
+  storage_account_name       = module.storage_account.name
+  storage_connection_string  = module.storage_account.connection_string
+  storage_account_access_key = module.storage_account.primary_access_key
+  enable_key_vault           = var.enable_key_vault
+  key_vault_name             = var.enable_key_vault ? local.key_vault_name : null
+  custom_app_settings = merge({
     "APP_ENVIRONMENT"   = var.app_environment
     "API_VERSION"       = var.api_version
     "DEBUG_MODE"        = var.debug_mode
     "MAX_CITIES_COUNT"  = var.max_cities_count
     "KEY_VAULT_ENABLED" = tostring(var.enable_key_vault)
-  }, var.enable_key_vault ? {
-    "KEY_VAULT_NAME"    = var.key_vault_name
+    "COSMOS_DB_ENABLED" = tostring(var.enable_cosmos_db)
+    # Add SFTP storage connection for blob processing
+    "SFTP_STORAGE_CONNECTION" = "DefaultEndpointsProtocol=https;AccountName=${azurerm_storage_account.sftp_storage.name};AccountKey=${azurerm_storage_account.sftp_storage.primary_access_key};EndpointSuffix=core.windows.net"
+    }, var.enable_key_vault ? {
+    "KEY_VAULT_NAME" = local.key_vault_name
+    } : {}, var.enable_cosmos_db ? {
+    "COSMOS_ENDPOINT"   = module.cosmos_db[0].endpoint
+    "COSMOS_DATABASE"   = module.cosmos_db[0].database_name
+    "COSMOS_COLLECTION" = module.cosmos_db[0].collection_name
+    "DATA_LIMIT"        = var.data_limit
   } : {})
 
   depends_on = [module.key_vault]
@@ -66,7 +155,7 @@ module "function_app" {
 # Add System Assigned Identity access policy after Function App is created
 resource "azurerm_key_vault_access_policy" "function_app_system_identity" {
   count = var.enable_key_vault ? 1 : 0
-  
+
   key_vault_id = module.key_vault[0].key_vault_id
   tenant_id    = module.key_vault[0].key_vault_tenant_id
   object_id    = module.function_app.system_assigned_identity_principal_id
@@ -77,4 +166,16 @@ resource "azurerm_key_vault_access_policy" "function_app_system_identity" {
   ]
 
   depends_on = [module.function_app, module.key_vault]
+}
+
+# Add Cosmos DB role assignment for Function App after both modules are created
+resource "azurerm_cosmosdb_sql_role_assignment" "function_app_cosmos_assignment" {
+  count               = var.enable_cosmos_db ? 1 : 0
+  resource_group_name = module.resource_group.name
+  account_name        = module.cosmos_db[0].account_name
+  role_definition_id  = "${module.cosmos_db[0].account_id}/sqlRoleDefinitions/00000000-0000-0000-0000-000000000002" # Built-in Cosmos DB Data Contributor
+  principal_id        = module.function_app.system_assigned_identity_principal_id
+  scope               = module.cosmos_db[0].account_id
+
+  depends_on = [module.function_app, module.cosmos_db]
 }
