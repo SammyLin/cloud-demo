@@ -1,0 +1,223 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Java Azure Functions Development Standards
+
+## Code Style and Structure
+
+### Naming Conventions
+- **Class Names**: Use PascalCase (e.g., `UserService`, `OrderRepository`)
+- **Method and Variable Names**: Use camelCase (e.g., `findUserById`, `isOrderValid`)
+- **Constants**: Use ALL_CAPS (e.g., `MAX_RETRY_ATTEMPTS`, `DEFAULT_PAGE_SIZE`)
+- **Package Names**: Use lowercase (e.g., `org.cloud.demo.config`)
+
+### Package Structure
+```
+org.cloud.demo/
+├── config/          # Configuration classes
+├── model/           # Data models
+├── service/         # Business logic services
+├── repository/      # Data access layer
+├── util/            # Utility classes
+└── Function.java    # Azure Functions main class
+```
+
+### Class Responsibilities
+- Each class should have a single responsibility
+- Service classes handle business logic
+- Configuration classes manage configuration
+- Utility classes provide common functionality
+- Model classes represent data structures
+
+## Azure Functions Best Practices
+
+### Function Design
+- Each function should focus on a single task
+- Use appropriate trigger types (HTTP, Blob, Timer, etc.)
+- Implement proper error handling and logging
+- Use environment variables for configuration
+
+### Configuration Management
+```java
+// Use configuration class to manage environment variables
+public class ApplicationConfig {
+    public String getEnvironment() {
+        return System.getenv("APP_ENVIRONMENT");
+    }
+    
+    public boolean isDebugMode() {
+        String debugMode = System.getenv("DEBUG_MODE");
+        return "true".equalsIgnoreCase(debugMode);
+    }
+}
+```
+
+### Error Handling
+```java
+// Unified error handling
+try {
+    // Business logic
+} catch (Exception e) {
+    context.getLogger().severe("Error: " + e.getMessage());
+    return ResponseUtil.createErrorResponse(request, HttpStatus.INTERNAL_SERVER_ERROR, 
+        "Operation failed: " + e.getMessage());
+}
+```
+
+### Logging
+```java
+// Structured logging
+context.getLogger().info("Processing file: " + fileName + " (" + fileSize + " bytes)");
+context.getLogger().warning("Invalid data format at line " + lineNumber);
+context.getLogger().severe("Database connection failed: " + error.getMessage());
+```
+
+## Code Quality
+
+### Comments and Documentation
+- Add JavaDoc comments for all public methods
+- Use English comments to explain complex business logic
+- Add descriptive comments for classes
+
+```java
+/**
+ * CSV Processing Service Class
+ * Responsible for parsing and validating CSV files
+ */
+public class CsvProcessingService {
+    
+    /**
+     * Process CSV content
+     * @param csvContent CSV file content
+     * @param fileName File name
+     * @param context Execution context
+     * @return Processing result
+     */
+    public ProcessingResult processCsvContent(String csvContent, String fileName, ExecutionContext context) {
+        // Implementation logic
+    }
+}
+```
+
+### Exception Handling
+- Catch specific exception types
+- Provide meaningful error messages
+- Log detailed error information
+- Avoid swallowing exceptions
+
+### Resource Management
+- Use try-with-resources statements
+- Ensure database connections and file handles are properly closed
+- Implement appropriate cleanup logic
+
+## Security
+
+### Sensitive Information Handling
+- Use Azure Key Vault to store keys and passwords
+- Mask sensitive information in logs
+- Use environment variables instead of hardcoded values
+
+```java
+/**
+ * Mask sensitive information
+ */
+private String maskSecret(String secret) {
+    if (secret == null || secret.isEmpty()) {
+        return "not set";
+    }
+    if (secret.length() <= 4) {
+        return "****";
+    }
+    return secret.substring(0, 2) + "****" + secret.substring(secret.length() - 2);
+}
+```
+
+### Input Validation
+- Validate all user inputs
+- Check file formats and sizes
+- Prevent SQL injection and XSS attacks
+
+## Performance Optimization
+
+### Database Operations
+- Use connection pools
+- Implement appropriate indexes
+- Avoid N+1 query problems
+- Use batch operations
+
+### Memory Management
+- Avoid memory leaks
+- Use appropriate data structures
+- Release unused resources promptly
+
+## Testing
+
+### Unit Testing
+- Write tests for all business logic
+- Use mock objects to isolate dependencies
+- Test boundary conditions and error cases
+
+### Integration Testing
+- Test Azure Functions endpoints
+- Verify database operations
+- Test external service integrations
+
+## Deployment and Monitoring
+
+### Configuration Management
+- Use environment variables to distinguish development, testing, and production environments
+- Implement configuration validation
+- Use Azure App Configuration for configuration management
+
+### Monitoring and Logging
+- Implement structured logging
+- Use Azure Application Insights for monitoring
+- Set up appropriate alerts and metrics
+
+## Code Review Checklist
+
+### Functional Correctness
+- [ ] Code implements expected functionality
+- [ ] All boundary cases are handled
+- [ ] Error handling is appropriate
+
+### Code Quality
+- [ ] Follows naming conventions
+- [ ] Code structure is clear
+- [ ] No duplicate code
+- [ ] Appropriate comments and documentation
+
+### Security
+- [ ] No hardcoded sensitive information
+- [ ] Appropriate input validation implemented
+- [ ] Error messages don't leak sensitive information
+
+### Performance
+- [ ] No obvious performance issues
+- [ ] Resource usage is appropriate
+- [ ] Database queries are optimized
+
+### Maintainability
+- [ ] Code is easy to understand and modify
+- [ ] Appropriate abstraction and separation of concerns
+- [ ] Sufficient test coverage
+
+## Common Anti-patterns
+
+### Practices to Avoid
+- Mixing multiple responsibilities in functions
+- Hardcoding configuration values
+- Ignoring exceptions or errors
+- Using global variables
+- Overly complex nested structures
+- Lack of appropriate logging
+
+### Recommended Practices
+- Single responsibility principle
+- Dependency injection
+- Appropriate error handling
+- Structured logging
+- Externalized configuration
+- Unit test coverage

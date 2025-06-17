@@ -1,0 +1,302 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Terraform Best Practices for Azure Infrastructure
+
+## Code Organization and Structure
+
+### File Structure
+```
+terraform/
+├── main.tf              # Main configuration
+├── variables.tf         # Input variables
+├── outputs.tf           # Output values
+├── terraform.tfvars     # Variable values
+├── versions.tf          # Provider and Terraform versions
+├── modules/             # Reusable modules
+│   ├── resource_group/
+│   ├── function_app/
+│   ├── storage_account/
+│   └── key_vault/
+└── environments/        # Environment-specific configurations
+    ├── dev/
+    ├── tst/
+    └── prd/
+```
+
+### Module Structure
+```
+module-name/
+├── main.tf              # Main module configuration
+├── variables.tf         # Module input variables
+├── outputs.tf           # Module outputs
+├── versions.tf          # Module-specific versions
+└── README.md            # Module documentation
+```
+
+## Naming Conventions
+
+### Resource Names
+- Use lowercase letters and hyphens
+- Follow Azure naming standards
+- Include environment and region identifiers
+- Example: `rg-twdemo-mcips-dev-twn-functions`
+
+### Variable Names
+- Use snake_case for variable names
+- Be descriptive and clear
+- Example: `resource_group_name`, `function_app_name`
+
+### Output Names
+- Use snake_case for output names
+- Be descriptive of what the output represents
+- Example: `function_app_url`, `storage_account_key`
+
+## Variable Management
+
+### Variable Definitions
+```hcl
+variable "environment" {
+  description = "Environment (dev, tst, prd)"
+  type        = string
+  default     = "dev"
+  validation {
+    condition     = contains(["dev", "tst", "prd"], var.environment)
+    error_message = "Environment must be one of: dev, tst, prd."
+  }
+}
+```
+
+### Variable Validation
+- Always validate input variables
+- Use meaningful error messages
+- Validate against allowed values
+- Check string lengths and formats
+
+### Local Values
+```hcl
+locals {
+  # Compute resource names based on naming standard
+  resource_group_name = "rg-${var.application}-${var.cips}-${var.environment}-${var.region}-${var.description}"
+  
+  # Standard tags
+  standard_tags = {
+    Environment = var.environment
+    Project     = "Taiwan Demo Functions"
+    CIPS        = var.cips
+    Application = var.application
+    Region      = var.region
+    Owner       = "Cloud Team"
+    CostCenter  = "IT-001"
+  }
+}
+```
+
+## Resource Configuration
+
+### Resource Naming
+- Use consistent naming patterns
+- Include environment and region
+- Follow Azure naming conventions
+- Example: `azurerm_resource_group.main`
+
+### Resource Tags
+- Apply standard tags to all resources
+- Use consistent tag structure
+- Include cost center and owner information
+- Example:
+```hcl
+tags = merge(local.standard_tags, {
+  Component = "function-app"
+  Version   = "1.0.0"
+})
+```
+
+### Data Sources
+- Use data sources for existing resources
+- Validate data source existence
+- Handle missing resources gracefully
+```hcl
+data "azurerm_resource_group" "existing" {
+  name = var.resource_group_name
+}
+```
+
+## Module Design
+
+### Module Inputs
+- Define clear input variables
+- Use appropriate variable types
+- Provide meaningful defaults
+- Include validation rules
+
+### Module Outputs
+- Export only necessary values
+- Use descriptive output names
+- Document output purposes
+- Example:
+```hcl
+output "function_app_url" {
+  description = "URL of the deployed Function App"
+  value       = azurerm_function_app.main.default_hostname
+}
+```
+
+### Module Dependencies
+- Use explicit dependencies with `depends_on`
+- Avoid circular dependencies
+- Use data sources for cross-module references
+
+## Security Best Practices
+
+### Sensitive Data
+- Use `sensitive = true` for sensitive variables
+- Never hardcode secrets in Terraform files
+- Use Azure Key Vault for secret management
+- Example:
+```hcl
+variable "api_key" {
+  description = "API key for external service"
+  type        = string
+  sensitive   = true
+}
+```
+
+### Access Control
+- Use least privilege principle
+- Implement proper IAM roles
+- Use managed identities where possible
+- Example:
+```hcl
+resource "azurerm_user_assigned_identity" "function_identity" {
+  name                = "id-${var.application}-${var.cips}-${var.environment}-funcaccess"
+  resource_group_name = azurerm_resource_group.main.name
+  location            = azurerm_resource_group.main.location
+}
+```
+
+## State Management
+
+### Backend Configuration
+- Use remote state storage
+- Enable state locking
+- Use separate state files per environment
+- Example:
+```hcl
+terraform {
+  backend "azurerm" {
+    resource_group_name  = "terraform-state-rg"
+    storage_account_name = "tfstatetwdemo"
+    container_name       = "tfstate"
+    key                  = "dev.terraform.tfstate"
+  }
+}
+```
+
+### State Security
+- Enable encryption at rest
+- Use access controls on state storage
+- Regularly backup state files
+- Use state locking to prevent conflicts
+
+## Error Handling and Validation
+
+### Resource Validation
+- Validate resource configurations
+- Use conditional creation with `count`
+- Handle optional resources gracefully
+- Example:
+```hcl
+resource "azurerm_key_vault" "main" {
+  count = var.enable_key_vault ? 1 : 0
+  
+  name                = var.key_vault_name
+  resource_group_name = azurerm_resource_group.main.name
+  location            = azurerm_resource_group.main.location
+  # ... other configuration
+}
+```
+
+### Error Messages
+- Provide clear error messages
+- Use validation blocks
+- Include troubleshooting information
+- Example:
+```hcl
+validation {
+  condition     = length(var.storage_account_name) <= 24
+  error_message = "Storage account name must be 24 characters or less."
+}
+```
+
+## Performance Optimization
+
+### Resource Dependencies
+- Minimize unnecessary dependencies
+- Use `depends_on` sparingly
+- Parallelize resource creation where possible
+- Use data sources for existing resources
+
+### Module Optimization
+- Keep modules focused and small
+- Avoid deep module nesting
+- Use consistent patterns across modules
+- Reuse common configurations
+
+## Documentation
+
+### Code Comments
+- Add comments for complex logic
+- Document business requirements
+- Explain resource relationships
+- Use consistent comment style
+
+### README Files
+- Document module purpose and usage
+- Include example configurations
+- List required variables and outputs
+- Provide deployment instructions
+
+## Testing and Validation
+
+### Plan Validation
+- Always run `terraform plan` before apply
+- Review planned changes carefully
+- Validate resource configurations
+- Check for potential issues
+
+### Code Quality
+- Use `terraform fmt` for formatting
+- Run `terraform validate` for syntax checking
+- Use `tflint` for additional validation
+- Follow consistent coding style
+
+## Deployment Strategy
+
+### Environment Separation
+- Use separate configurations per environment
+- Maintain consistent naming across environments
+- Use environment-specific variable files
+- Example: `dev.tfvars`, `tst.tfvars`, `prd.tfvars`
+
+### Deployment Process
+- Use CI/CD pipelines for deployments
+- Implement approval gates for production
+- Use workspace separation for environments
+- Monitor deployment logs and metrics
+
+## Monitoring and Maintenance
+
+### Resource Monitoring
+- Enable diagnostic settings
+- Configure logging and metrics
+- Set up alerts for critical resources
+- Monitor resource costs and usage
+
+### Maintenance Tasks
+- Regularly update provider versions
+- Review and update resource configurations
+- Clean up unused resources
+- Monitor for deprecated features

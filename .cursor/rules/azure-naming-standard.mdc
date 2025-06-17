@@ -1,0 +1,120 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Azure Resource Naming Standards
+
+## Core Naming Pattern
+Naming Standards:
+```
+[Resource]-[Application]-[CIPS]-[Environment]-[Region]-[Description]-[Suffix]
+```
+
+## Project-Specific Identifiers
+- **Application Name**: `twdemo` (Taiwan Demo Application)
+- **CIPS Identifier**: `mcips` (Microsoft Cloud Infrastructure Platform Services)
+- **Environment**: `dev` (Development), `tst` (Testing), `prd` (Production)
+- **Region**: `twn` (Taiwan), `hk` (Hong Kong), `sg` (Singapore)
+
+## Azure Resource Naming Standards
+
+### Resource Group
+```
+rg-[Application]-[CIPS]-[Environment]-[Region]-[Description]
+```
+Example: `rg-twdemo-mcips-dev-twn-functions`
+
+### Function App
+```
+func-[Application]-[CIPS]-[Environment]-[Region]-[Description]
+```
+Example: `func-twdemo-mcips-dev-twn-citydata`
+
+### Storage Account (24 character limit)
+```
+[Resource][Application][CIPS][Environment][Region][Description][Sequence]
+```
+Example: `satwmcipsdevtwnfunc01`
+
+### Key Vault
+```
+kv-[Application]-[CIPS]-[Environment]-[Region]-[Description]
+```
+Example: `kv-twdemo-mcips-dev-twn-secrets`
+
+### Cosmos DB Account
+```
+cosmos-[Application]-[CIPS]-[Environment]-[Region]-[Description]
+```
+Example: `cosmos-twdemo-mcips-dev-twn-data`
+
+### Cosmos DB Database
+```
+db-[Application]-[CIPS]-[Environment]-[Region]-[Description]
+```
+Example: `db-twdemo-mcips-dev-twn-csvdata`
+
+### Cosmos DB Collection
+```
+col-[Application]-[CIPS]-[Environment]-[Region]-[Description]
+```
+Example: `col-twdemo-mcips-dev-twn-records`
+
+### Managed Identity
+```
+id-[Application]-[CIPS]-[Environment]-[Description]
+```
+Example: `id-twdemo-mcips-dev-funcaccess`
+
+### Virtual Network
+```
+vnet-[Application]-[CIPS]-[Environment]-[Region]-[Description]
+```
+Example: `vnet-twdemo-mcips-dev-twn-core`
+
+### Subnet
+```
+[VNetName]-snet-[Description]
+```
+Example: `vnet-twdemo-mcips-dev-twn-core-snet-functions`
+
+### SFTP Storage Account (24 character limit)
+```
+sftp[Application][CIPS][Environment][Region][Description][Sequence]
+```
+Example: `sftptwmcipsdevtwncsv01`
+
+### SFTP User (3-64 characters, lowercase letters and numbers only)
+```
+sftp[Application][CIPS][Environment][Region][Description]
+```
+Example: `sftptwmcipsdevtwnuser`
+
+### Blob Containers
+```
+[Description]-[Application]-[CIPS]-[Environment]-[Region]-[Sequence]
+```
+Example: `csv-uploads-twdemo-mcips-dev-twn-01`, `csv-success-twdemo-mcips-prd-twn-01`
+
+### Service Plan
+```
+plan-[FunctionAppName]
+```
+Example: `plan-func-twdemo-mcips-dev-twn-citydata`
+
+### User Assigned Identity
+```
+id-[KeyVaultName]
+```
+Example: `id-kv-twdemo-mcips-dev-twn-secrets`
+
+### Storage Share
+```
+share-[StorageAccountName]-[Description]
+```
+Example: `share-satwmcipsdevtwnfunc01-content`
+
+## Tag Standards
+Required tags:
+```
