@@ -53,6 +53,7 @@ infrastructure/pulumi/*.js.map
 **/terraform.tfstate
 **/terraform.tfstate.backup
 **/.terraform.tfstate.lock.info
+**/terraform.tfvars
 # Keep .terraform.lock.hcl for dependency management
 
 # Claude Code
