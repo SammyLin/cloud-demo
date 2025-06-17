@@ -96,4 +96,33 @@ else
 fi
 echo ""
 
+# Check if Cosmos DB is enabled
+COSMOS_ENABLED=$(pulumi stack output cosmosAccountName 2>/dev/null && echo "true" || echo "false")
+
+echo "5️⃣  CSV Data APIs:"
+echo "   curl \"$FUNCTION_APP_URL/api/data\""
+echo "   curl \"$FUNCTION_APP_URL/api/query\""
+echo "   curl \"$FUNCTION_APP_URL/api/query?id=001\""
+echo "   curl \"$FUNCTION_APP_URL/api/query?fileName=test_data_valid\""
+echo "   curl \"$FUNCTION_APP_URL/api/query?limit=10\""
+if [ "$COSMOS_ENABLED" = "true" ]; then
+    echo "   (Cosmos DB enabled ✅)"
+else
+    echo "   (Cosmos DB disabled - will return error message)"
+fi
+echo ""
+
+echo "6️⃣  CSV Processing Workflow:"
+if [ "$COSMOS_ENABLED" = "true" ]; then
+    SFTP_STORAGE=$(pulumi stack output csvUploadContainerName 2>/dev/null || echo "csv-uploads")
+    echo "   1. Upload CSV files to: $SFTP_STORAGE container"
+    echo "   2. Files processed by CsvBlobProcessor function"
+    echo "   3. Success → csv-success container"
+    echo "   4. Failure → csv-failure container (with error logs)"
+    echo "   5. Query data via /api/data and /api/query endpoints"
+else
+    echo "   (CSV processing disabled - Cosmos DB not enabled)"
+fi
+echo ""
+
 echo "=========================================="

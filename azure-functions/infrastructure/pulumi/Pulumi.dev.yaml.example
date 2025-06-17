@@ -7,6 +7,12 @@ config:
   azure-functions-demo:enableKeyVault: true
   azure-functions-demo:keyVaultName: taiwan-func-kv-01
   # Note: Tenant ID is automatically detected from current Azure context
+  # Cosmos DB configuration (optional - enables CSV processing workflow)
+  azure-functions-demo:enableCosmosDb: true
+  azure-functions-demo:cosmosDbAccountName: taiwan-func-cosmos
+  azure-functions-demo:cosmosDatabaseName: csvdata
+  azure-functions-demo:cosmosCollectionName: records
+  azure-functions-demo:dataLimit: "100"
   # Custom environment variables
   azure-functions-demo:appEnvironment: development
   azure-functions-demo:apiVersion: v1

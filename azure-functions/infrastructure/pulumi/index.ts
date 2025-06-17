@@ -11,6 +11,12 @@ const location = config.require("location");
 const enableKeyVault = config.getBoolean("enableKeyVault") || false;
 const keyVaultName = config.get("keyVaultName");
 
+// Optional Cosmos DB configuration
+const enableCosmosDb = config.getBoolean("enableCosmosDb") || false;
+const cosmosDbAccountName = config.get("cosmosDbAccountName") || `${functionAppName}-cosmos`;
+const cosmosDatabaseName = config.get("cosmosDatabaseName") || "csvdata";
+const cosmosCollectionName = config.get("cosmosCollectionName") || "records";
+
 // Create Resource Group
 const rg = new azure.resources.ResourceGroup(resourceGroupName, {
     location: location,
@@ -34,6 +40,60 @@ const storageKeys = azure.storage.listStorageAccountKeysOutput({
 
 const storageConnectionString = pulumi.interpolate`DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};AccountKey=${storageKeys.keys[0].value};EndpointSuffix=core.windows.net`;
 
+// Create Blob Containers for CSV processing workflow
+const csvUploadContainer = new azure.storage.BlobContainer("csv-uploads", {
+    resourceGroupName: rg.name,
+    accountName: storageAccount.name,
+    containerName: "csv-uploads",
+    publicAccess: "None",
+});
+
+const csvSuccessContainer = new azure.storage.BlobContainer("csv-success", {
+    resourceGroupName: rg.name,
+    accountName: storageAccount.name,
+    containerName: "csv-success",
+    publicAccess: "None",
+});
+
+const csvFailureContainer = new azure.storage.BlobContainer("csv-failure", {
+    resourceGroupName: rg.name,
+    accountName: storageAccount.name,
+    containerName: "csv-failure",
+    publicAccess: "None",
+});
+
+// Create Cosmos DB resources if enabled
+let cosmosAccount: azure.documentdb.DatabaseAccount | undefined;
+let cosmosConnectionString: pulumi.Output<string> | undefined;
+
+if (enableCosmosDb) {
+    // Create Cosmos DB Account with MongoDB API
+    cosmosAccount = new azure.documentdb.DatabaseAccount(cosmosDbAccountName, {
+        resourceGroupName: rg.name,
+        location: rg.location,
+        databaseAccountOfferType: "Standard",
+        kind: "MongoDB",
+        consistencyPolicy: {
+            defaultConsistencyLevel: "Session",
+        },
+        locations: [{
+            locationName: rg.location,
+            failoverPriority: 0,
+        }],
+        capabilities: [{
+            name: "EnableMongo",
+        }],
+    });
+
+    // Get Cosmos DB connection string
+    const cosmosKeys = azure.documentdb.listDatabaseAccountKeysOutput({
+        resourceGroupName: rg.name,
+        accountName: cosmosAccount.name,
+    });
+
+    cosmosConnectionString = pulumi.interpolate`mongodb://${cosmosAccount.name}:${cosmosKeys.primaryMasterKey}@${cosmosAccount.name}.mongo.cosmos.azure.com:10255/${cosmosDatabaseName}?ssl=true&replicaSet=globaldb&retrywrites=false&maxIdleTimeMS=120000&appName=@${cosmosAccount.name}@`;
+}
+
 let userAssignedIdentity: azure.managedidentity.UserAssignedIdentity | undefined;
 let vault: azure.keyvault.Vault | undefined;
 
@@ -46,14 +106,14 @@ if (enableKeyVault && keyVaultName) {
     });
 
     // Get current tenant ID
-    const currentConfig = azure.authorization.getClientConfigOutput();
+    const currentConfig = azure.authorization.getClientConfig();
     
     // Create Key Vault with proper access policies for deployment and deletion
     vault = new azure.keyvault.Vault(keyVaultName, {
         location: rg.location,
         resourceGroupName: rg.name,
         properties: {
-            tenantId: currentConfig.tenantId,
+            tenantId: currentConfig.then(config => config.tenantId),
             enabledForTemplateDeployment: true,
             enableRbacAuthorization: false,
             sku: {
@@ -63,7 +123,7 @@ if (enableKeyVault && keyVaultName) {
             accessPolicies: [
                 // User-assigned identity access policy
                 {
-                    tenantId: currentConfig.tenantId,
+                    tenantId: currentConfig.then(config => config.tenantId),
                     objectId: userAssignedIdentity.principalId,
                     permissions: {
                         secrets: ["Get", "List"],
@@ -71,8 +131,8 @@ if (enableKeyVault && keyVaultName) {
                 },
                 // Current user/service principal access policy for management operations
                 {
-                    tenantId: currentConfig.tenantId,
-                    objectId: currentConfig.objectId,
+                    tenantId: currentConfig.then(config => config.tenantId),
+                    objectId: currentConfig.then(config => config.objectId),
                     permissions: {
                         secrets: ["Get", "List", "Set", "Delete", "Recover", "Backup", "Restore"],
                         keys: ["Get", "List", "Update", "Create", "Import", "Delete", "Recover", "Backup", "Restore"],
@@ -155,6 +215,32 @@ let appSettings: any[] = [
     },
 ];
 
+// Add Cosmos DB settings if enabled
+if (enableCosmosDb && cosmosConnectionString) {
+    appSettings = appSettings.concat([
+        {
+            name: "COSMOS_CONNECTION_STRING",
+            value: cosmosConnectionString,
+        },
+        {
+            name: "COSMOS_DATABASE",
+            value: cosmosDatabaseName,
+        },
+        {
+            name: "COSMOS_COLLECTION",
+            value: cosmosCollectionName,
+        },
+        {
+            name: "DATA_LIMIT",
+            value: config.get("dataLimit") || "100",
+        },
+        {
+            name: "COSMOS_DB_ENABLED",
+            value: "true",
+        },
+    ]);
+}
+
 // Configure managed identity
 let identity: any;
 if (enableKeyVault && userAssignedIdentity) {
@@ -219,6 +305,19 @@ if (enableKeyVault && vault) {
     outputs.userAssignedIdentityId = userAssignedIdentity!.id;
     outputs.keyVaultAccessPolicyCommand = pulumi.interpolate`az keyvault set-policy --name ${vault.name} --object-id ${functionApp.identity.apply(id => id?.principalId)} --secret-permissions get list`;
 }
+
+// Add Cosmos DB outputs if enabled
+if (enableCosmosDb && cosmosAccount) {
+    outputs.cosmosAccountName = cosmosAccount.name;
+    outputs.cosmosAccountEndpoint = cosmosAccount.documentEndpoint;
+    outputs.cosmosDatabaseName = cosmosDatabaseName;
+    outputs.cosmosCollectionName = cosmosCollectionName;
+}
+
+// Add CSV container outputs
+outputs.csvUploadContainerName = csvUploadContainer.name;
+outputs.csvSuccessContainerName = csvSuccessContainer.name;
+outputs.csvFailureContainerName = csvFailureContainer.name;
 
 // Export all outputs
 export = outputs;
