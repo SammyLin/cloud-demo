@@ -148,6 +148,8 @@ module "function_app" {
     # Environment variables for /api/config-env
     "ENV_APP_NAME" = "cloud-demo-functions"
     "ENV_REGION"   = var.region
+    # SFTP storage connection for CSV blob processing
+    "SFTP_STORAGE_CONNECTION" = "DefaultEndpointsProtocol=https;AccountName=${azurerm_storage_account.sftp_storage.name};AccountKey=${azurerm_storage_account.sftp_storage.primary_access_key};EndpointSuffix=core.windows.net"
     }, var.enable_key_vault ? {
     # Key Vault references for /api/config-kv
     "KV_API_KEY"            = "@Microsoft.KeyVault(VaultName=${local.key_vault_name};SecretName=api-key)"

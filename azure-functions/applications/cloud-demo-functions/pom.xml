@@ -5,12 +5,12 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>org.cloud.demo</groupId>
-    <artifactId>taiwan-city-functions</artifactId>
+    <artifactId>cloud-demo-functions</artifactId>
     <version>1.0.0</version>
     <packaging>jar</packaging>
 
-    <name>Taiwan City Functions</name>
-    <description>Azure Functions demo for Taiwan city data service</description>
+    <name>Cloud Demo Functions</name>
+    <description>Azure Functions demo for cloud service integration</description>
 
     <properties>
     <stagingDirectory>${project.build.directory}/azure-functions/${functionAppName}</stagingDirectory>
@@ -18,7 +18,7 @@
         <java.version>17</java.version>
         <azure.functions.maven.plugin.version>1.31.0</azure.functions.maven.plugin.version>
         <azure.functions.java.library.version>2.2.0</azure.functions.java.library.version>
-        <functionAppName>taiwan-city-functions</functionAppName>
+        <functionAppName>cloud-demo-functions</functionAppName>
         <stagingDirectory>${project.build.directory}/azure-functions/${functionAppName}</stagingDirectory>
     </properties>
 

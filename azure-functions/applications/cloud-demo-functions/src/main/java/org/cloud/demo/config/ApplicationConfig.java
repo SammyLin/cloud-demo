@@ -56,8 +56,9 @@ public class ApplicationConfig {
      * Check if Key Vault is enabled
      */
     public boolean isKeyVaultEnabled() {
-        String keyVaultEnabled = System.getenv("KEY_VAULT_ENABLED");
-        return "true".equalsIgnoreCase(keyVaultEnabled);
+        // Key Vault is enabled if KEY_VAULT_NAME environment variable is set
+        String keyVaultName = System.getenv("KEY_VAULT_NAME");
+        return keyVaultName != null && !keyVaultName.trim().isEmpty();
     }
     
     /**
@@ -71,21 +72,21 @@ public class ApplicationConfig {
      * Get Cosmos DB endpoint
      */
     public Optional<String> getCosmosEndpoint() {
-        return Optional.ofNullable(System.getenv("COSMOS_ENDPOINT"));
+        return Optional.ofNullable(System.getenv("DB_ENDPOINT"));
     }
     
     /**
      * Get Cosmos DB database name
      */
     public Optional<String> getCosmosDatabase() {
-        return Optional.ofNullable(System.getenv("COSMOS_DATABASE"));
+        return Optional.ofNullable(System.getenv("DB_DATABASE_NAME"));
     }
     
     /**
      * Get Cosmos DB collection name
      */
     public Optional<String> getCosmosCollection() {
-        return Optional.ofNullable(System.getenv("COSMOS_COLLECTION"));
+        return Optional.ofNullable(System.getenv("DB_COLLECTION_NAME"));
     }
     
     /**
@@ -114,13 +115,13 @@ public class ApplicationConfig {
      * Get API key
      */
     public Optional<String> getApiKey() {
-        return Optional.ofNullable(System.getenv("API_KEY"));
+        return Optional.ofNullable(System.getenv("KV_API_KEY"));
     }
     
     /**
      * Get database connection string
      */
     public Optional<String> getDatabaseConnection() {
-        return Optional.ofNullable(System.getenv("DATABASE_CONNECTION"));
+        return Optional.ofNullable(System.getenv("KV_DATABASE_CONNECTION"));
     }
 } 
