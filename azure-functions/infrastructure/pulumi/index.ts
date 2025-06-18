@@ -256,6 +256,11 @@ let appSettings: any[] = [
         name: "ENV_REGION",
         value: config.get("region") || "twn",
     },
+    // SFTP storage connection for CSV blob processing
+    {
+        name: "SFTP_STORAGE_CONNECTION",
+        value: sftpStorageConnectionString,
+    },
 ];
 
 // Add Cosmos DB settings if enabled (for /api/db-test)
