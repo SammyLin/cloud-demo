@@ -22,6 +22,14 @@ module "resource_group" {
   location = local.location
 }
 
+module "application_insights" {
+  source              = "./modules/application_insights"
+  name                = local.application_insights_name
+  resource_group_name = module.resource_group.name
+  location            = module.resource_group.location
+  tags                = local.standard_tags
+}
+
 module "storage_account" {
   source              = "./modules/storage_account"
   name                = local.storage_account_name
@@ -122,15 +130,16 @@ module "key_vault" {
 }
 
 module "function_app" {
-  source                     = "./modules/function_app"
-  name                       = local.function_app_name
-  resource_group_name        = module.resource_group.name
-  location                   = module.resource_group.location
-  storage_account_name       = module.storage_account.name
-  storage_connection_string  = module.storage_account.connection_string
-  storage_account_access_key = module.storage_account.primary_access_key
-  enable_key_vault           = var.enable_key_vault
-  key_vault_name             = var.enable_key_vault ? local.key_vault_name : null
+  source                                  = "./modules/function_app"
+  name                                    = local.function_app_name
+  resource_group_name                     = module.resource_group.name
+  location                                = module.resource_group.location
+  storage_account_name                    = module.storage_account.name
+  storage_connection_string               = module.storage_account.connection_string
+  storage_account_access_key              = module.storage_account.primary_access_key
+  enable_key_vault                        = var.enable_key_vault
+  key_vault_name                          = var.enable_key_vault ? local.key_vault_name : null
+  application_insights_connection_string  = module.application_insights.connection_string
   custom_app_settings = merge({
     "APP_ENVIRONMENT"   = var.app_environment
     "API_VERSION"       = var.api_version
@@ -168,14 +177,19 @@ resource "azurerm_key_vault_access_policy" "function_app_system_identity" {
   depends_on = [module.function_app, module.key_vault]
 }
 
-# Add Cosmos DB role assignment for Function App after both modules are created
-resource "azurerm_cosmosdb_sql_role_assignment" "function_app_cosmos_assignment" {
-  count               = var.enable_cosmos_db ? 1 : 0
-  resource_group_name = module.resource_group.name
-  account_name        = module.cosmos_db[0].account_name
-  role_definition_id  = "${module.cosmos_db[0].account_id}/sqlRoleDefinitions/00000000-0000-0000-0000-000000000002" # Built-in Cosmos DB Data Contributor
-  principal_id        = module.function_app.system_assigned_identity_principal_id
-  scope               = module.cosmos_db[0].account_id
+# Service Connector between Function App and Cosmos DB using Managed Identity
+module "service_connector" {
+  count           = var.enable_cosmos_db ? 1 : 0
+  source          = "./modules/service_connector"
+  connection_name = "cosmosdb_connection"
+  function_app_id = module.function_app.id
+  cosmos_db_id    = module.cosmos_db[0].account_id
+  key_vault_id    = var.enable_key_vault ? module.key_vault[0].key_vault_id : null
+
+  tags = merge(local.standard_tags, {
+    Component = "service-connector"
+    Purpose   = "cosmos-db-connection"
+  })
 
   depends_on = [module.function_app, module.cosmos_db]
 }

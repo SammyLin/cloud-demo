@@ -53,3 +53,9 @@ variable "key_vault_name" {
   type        = string
   default     = null
 }
+
+variable "application_insights_connection_string" {
+  description = "Application Insights connection string"
+  type        = string
+  default     = null
+}

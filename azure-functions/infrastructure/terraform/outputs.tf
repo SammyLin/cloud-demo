@@ -80,6 +80,16 @@ output "cosmos_db_collection_name" {
   value       = var.enable_cosmos_db ? module.cosmos_db[0].collection_name : null
 }
 
+output "service_connector_name" {
+  description = "Name of the Service Connector"
+  value       = var.enable_cosmos_db ? module.service_connector[0].connection_name : null
+}
+
+output "service_connector_id" {
+  description = "ID of the Service Connector"
+  value       = var.enable_cosmos_db ? module.service_connector[0].connection_id : null
+}
+
 output "csv_upload_container_name" {
   description = "Name of the CSV upload container"
   value       = azurerm_storage_container.csv_uploads.name

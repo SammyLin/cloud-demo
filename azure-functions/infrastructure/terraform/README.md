@@ -141,6 +141,49 @@ terraform output computed_resource_names
 terraform plan -var-file="environments/dev/main.tfvars"
 ```
 
+## Logging and Monitoring
+
+### Application Insights
+- **Status**: ✅ Enabled
+- **Connection**: Automatically configured in Function App
+- **Retention**: 90 days
+- **Sampling**: 100%
+- **Location**: East Asia
+
+### Function App Logging
+- **Application Logs**: Information level
+- **HTTP Logs**: Enabled (3 days retention)
+- **Detailed Error Messages**: Enabled
+- **Failed Request Tracing**: Enabled
+
+### Service Connector (Cosmos DB)
+- **Authentication**: System-assigned Managed Identity
+- **Status**: ✅ Configured and working
+- **Environment Variables**: 
+  - `AZURE_COSMOS_RESOURCEENDPOINT`
+  - `AZURE_COSMOS_LISTCONNECTIONSTRINGURL`
+  - `AZURE_COSMOS_SCOPE`
+- **Benefits**: No connection string secrets needed
+
+### Log Access Commands
+```bash
+# View Application Insights logs
+az monitor app-insights query \
+  --app appins-twdemo-mcips-dev-twn-01 \
+  --analytics-query "requests | limit 10"
+
+# Stream Function App logs (real-time)
+az functionapp log tail \
+  --name func-twdemo-mcips-dev-twn-citydata \
+  --resource-group rg-twdemo-mcips-dev-twn-functions
+
+# Download Function App logs
+az webapp log download \
+  --name func-twdemo-mcips-dev-twn-citydata \
+  --resource-group rg-twdemo-mcips-dev-twn-functions \
+  --log-file app-logs.zip
+```
+
 ## Related Documentation
 
 - [Cursor Rules](../.cursor/rules/) - Development standards and best practices

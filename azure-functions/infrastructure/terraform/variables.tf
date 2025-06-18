@@ -174,10 +174,11 @@ locals {
   function_app_name      = var.function_app_name != null ? var.function_app_name : local.computed_function_app_name
   storage_account_name   = var.storage_account_name != null ? var.storage_account_name : local.computed_storage_account_name
   key_vault_name         = var.key_vault_name != null ? var.key_vault_name : local.computed_key_vault_name
-  cosmos_db_account_name = var.cosmos_db_account_name != null ? var.cosmos_db_account_name : local.computed_cosmos_db_account_name
-  sftp_storage_name      = local.computed_sftp_storage_name
-  cosmos_database_name   = local.computed_cosmos_database_name
-  cosmos_collection_name = local.computed_cosmos_collection_name
+  cosmos_db_account_name   = var.cosmos_db_account_name != null ? var.cosmos_db_account_name : local.computed_cosmos_db_account_name
+  sftp_storage_name        = local.computed_sftp_storage_name
+  cosmos_database_name     = local.computed_cosmos_database_name
+  cosmos_collection_name   = local.computed_cosmos_collection_name
+  application_insights_name = "appins-${var.application}-${var.cips}-${var.environment}-${var.region}-01"
 
   # Standard tags
   standard_tags = {

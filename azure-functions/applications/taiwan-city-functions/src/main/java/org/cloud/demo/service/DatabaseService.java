@@ -1,8 +1,16 @@
 package org.cloud.demo.service;
 
 import com.azure.identity.DefaultAzureCredentialBuilder;
+import com.azure.identity.DefaultAzureCredential;
+import com.azure.core.credential.TokenRequestContext;
+import com.azure.core.http.HttpResponse;
+import com.azure.core.http.HttpClient;
+import com.azure.core.http.HttpRequest;
+import com.azure.core.http.HttpMethod;
 import com.microsoft.azure.functions.ExecutionContext;
 import com.mongodb.MongoClientSettings;
+import com.mongodb.MongoCredential;
+import com.mongodb.ServerAddress;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
@@ -31,7 +39,102 @@ public class DatabaseService {
     }
     
     /**
-     * Create MongoDB client (using Key Vault + primary key)
+     * Create MongoDB client - tries Service Connector first, then falls back to Key Vault
+     */
+    private MongoClient createMongoClient(ExecutionContext context) {
+        // Check if Service Connector is available
+        String serviceConnectorEndpoint = System.getenv("AZURE_COSMOS_RESOURCEENDPOINT");
+        if (serviceConnectorEndpoint != null && !serviceConnectorEndpoint.isEmpty()) {
+            context.getLogger().info("Service Connector detected, using Service Connector connection");
+            return createMongoClientWithServiceConnector(context);
+        } else {
+            context.getLogger().info("Service Connector not detected, falling back to Key Vault connection");
+            return createMongoClientWithPrimaryKey(context);
+        }
+    }
+    
+    /**
+     * Create MongoDB client using Service Connector with Managed Identity
+     */
+    private MongoClient createMongoClientWithServiceConnector(ExecutionContext context) {
+        try {
+            // Get Service Connector environment variables
+            String cosmosEndpoint = System.getenv("AZURE_COSMOS_RESOURCEENDPOINT");
+            String listConnectionStringUrl = System.getenv("AZURE_COSMOS_LISTCONNECTIONSTRINGURL");
+            
+            if (cosmosEndpoint == null || cosmosEndpoint.isEmpty()) {
+                throw new RuntimeException("AZURE_COSMOS_RESOURCEENDPOINT not found - Service Connector may not be configured");
+            }
+            
+            context.getLogger().info("Using Service Connector with endpoint: " + cosmosEndpoint);
+            
+            // Try to get connection string using Managed Identity and Azure Management API
+            if (listConnectionStringUrl != null && !listConnectionStringUrl.isEmpty()) {
+                context.getLogger().info("Attempting to get connection string from: " + listConnectionStringUrl);
+                
+                try {
+                    DefaultAzureCredential credential = new DefaultAzureCredentialBuilder().build();
+                    
+                    // Make HTTP request to get connection strings
+                    HttpClient httpClient = HttpClient.createDefault();
+                    HttpRequest request = new HttpRequest(HttpMethod.POST, listConnectionStringUrl);
+                    request.setHeader("Authorization", "Bearer " + credential.getToken(
+                        new TokenRequestContext().addScopes("https://management.azure.com/.default")
+                    ).block().getToken());
+                    request.setHeader("Content-Type", "application/json");
+                    
+                    HttpResponse response = httpClient.send(request).block();
+                    
+                    if (response.getStatusCode() == 200) {
+                        String responseBody = response.getBodyAsString().block();
+                        context.getLogger().info("Successfully retrieved connection strings");
+                        
+                        // Parse the response to extract MongoDB connection string
+                        // Response format: {"connectionStrings":[{"connectionString":"mongodb://...","description":"Primary MongoDB Connection String"}]}
+                        if (responseBody.contains("mongodb://")) {
+                            int startIndex = responseBody.indexOf("mongodb://");
+                            int endIndex = responseBody.indexOf("\"", startIndex);
+                            String mongoConnectionString = responseBody.substring(startIndex, endIndex);
+                            
+                            context.getLogger().info("Using retrieved MongoDB connection string");
+                            
+                            MongoClientSettings settings = MongoClientSettings.builder()
+                                .applyConnectionString(new com.mongodb.ConnectionString(mongoConnectionString))
+                                .build();
+                                
+                            return MongoClients.create(settings);
+                        }
+                    } else {
+                        context.getLogger().warning("Failed to get connection string, status: " + response.getStatusCode());
+                    }
+                } catch (Exception e) {
+                    context.getLogger().warning("Failed to retrieve connection string via API: " + e.getMessage());
+                }
+            }
+            
+            // Fallback: Try direct connection (this might not work without authentication)
+            String accountName = cosmosEndpoint.replace("https://", "").replace(".documents.azure.com:443/", "");
+            String mongoConnectionString = String.format(
+                "mongodb://%s.mongo.cosmos.azure.com:10255/?ssl=true&replicaSet=globaldb&retrywrites=false&maxIdleTimeMS=120000&appName=@%s@",
+                accountName, accountName
+            );
+            
+            context.getLogger().info("Attempting fallback MongoDB connection");
+            
+            MongoClientSettings settings = MongoClientSettings.builder()
+                .applyConnectionString(new com.mongodb.ConnectionString(mongoConnectionString))
+                .build();
+                
+            return MongoClients.create(settings);
+            
+        } catch (Exception e) {
+            context.getLogger().severe("Failed to create MongoDB client with Service Connector: " + e.getMessage());
+            throw new RuntimeException("Failed to create MongoDB client", e);
+        }
+    }
+
+    /**
+     * Create MongoDB client (using Key Vault + primary key) - LEGACY METHOD
      */
     private MongoClient createMongoClientWithPrimaryKey(ExecutionContext context) {
         try {
@@ -80,7 +183,7 @@ public class DatabaseService {
             throw new RuntimeException("Cosmos DB database or collection name not configured");
         }
         
-        try (MongoClient mongoClient = createMongoClientWithPrimaryKey(context)) {
+        try (MongoClient mongoClient = createMongoClient(context)) {
             MongoDatabase database = mongoClient.getDatabase(databaseName.get());
             MongoCollection<Document> collection = database.getCollection(collectionName.get());
             
@@ -127,7 +230,7 @@ public class DatabaseService {
         
         List<Document> results = new ArrayList<>();
         
-        try (MongoClient mongoClient = createMongoClientWithPrimaryKey(context)) {
+        try (MongoClient mongoClient = createMongoClient(context)) {
             MongoDatabase database = mongoClient.getDatabase(databaseName.get());
             MongoCollection<Document> collection = database.getCollection(collectionName.get());
             
@@ -161,7 +264,7 @@ public class DatabaseService {
         
         List<Document> results = new ArrayList<>();
         
-        try (MongoClient mongoClient = createMongoClientWithPrimaryKey(context)) {
+        try (MongoClient mongoClient = createMongoClient(context)) {
             MongoDatabase database = mongoClient.getDatabase(databaseName.get());
             MongoCollection<Document> collection = database.getCollection(collectionName.get());
             
