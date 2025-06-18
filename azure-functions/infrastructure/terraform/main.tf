@@ -145,21 +145,19 @@ module "function_app" {
   key_vault_name                          = var.enable_key_vault ? local.key_vault_name : null
   application_insights_connection_string  = module.application_insights.connection_string
   custom_app_settings = merge({
-    "APP_ENVIRONMENT"   = var.app_environment
-    "API_VERSION"       = var.api_version
-    "DEBUG_MODE"        = var.debug_mode
-    "MAX_CITIES_COUNT"  = var.max_cities_count
-    "KEY_VAULT_ENABLED" = tostring(var.enable_key_vault)
-    "COSMOS_DB_ENABLED" = tostring(var.enable_cosmos_db)
-    # Add SFTP storage connection for blob processing
-    "SFTP_STORAGE_CONNECTION" = "DefaultEndpointsProtocol=https;AccountName=${azurerm_storage_account.sftp_storage.name};AccountKey=${azurerm_storage_account.sftp_storage.primary_access_key};EndpointSuffix=core.windows.net"
+    # Environment variables for /api/config-env
+    "ENV_APP_NAME" = "cloud-demo-functions"
+    "ENV_REGION"   = var.region
     }, var.enable_key_vault ? {
-    "KEY_VAULT_NAME" = local.key_vault_name
+    # Key Vault references for /api/config-kv
+    "KV_API_KEY"            = "@Microsoft.KeyVault(VaultName=${local.key_vault_name};SecretName=api-key)"
+    "KV_DATABASE_CONNECTION" = "@Microsoft.KeyVault(VaultName=${local.key_vault_name};SecretName=database-connection)"
+    "KEY_VAULT_NAME"        = local.key_vault_name
     } : {}, var.enable_cosmos_db ? {
-    "COSMOS_ENDPOINT"   = module.cosmos_db[0].endpoint
-    "COSMOS_DATABASE"   = module.cosmos_db[0].database_name
-    "COSMOS_COLLECTION" = module.cosmos_db[0].collection_name
-    "DATA_LIMIT"        = var.data_limit
+    # Database configuration for /api/db-test
+    "DB_ENDPOINT"        = module.cosmos_db[0].endpoint
+    "DB_DATABASE_NAME"   = module.cosmos_db[0].database_name
+    "DB_COLLECTION_NAME" = module.cosmos_db[0].collection_name
   } : {})
 
   depends_on = [module.key_vault]

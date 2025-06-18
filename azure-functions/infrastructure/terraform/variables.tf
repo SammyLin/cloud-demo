@@ -26,7 +26,7 @@ variable "region" {
 variable "application" {
   description = "Application name"
   type        = string
-  default     = "twdemo"
+  default     = "clouddemo"
 }
 
 variable "cips" {

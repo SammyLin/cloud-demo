@@ -13,7 +13,6 @@ import com.microsoft.azure.functions.annotation.HttpTrigger;
 import org.cloud.demo.config.ApplicationConfig;
 import org.cloud.demo.model.CsvData;
 import org.cloud.demo.model.ProcessingResult;
-import org.cloud.demo.service.CityService;
 import org.cloud.demo.service.CsvProcessingService;
 import org.cloud.demo.service.DatabaseService;
 import org.cloud.demo.service.KeyVaultService;
@@ -32,7 +31,6 @@ import java.util.Optional;
 public class Function {
     
     private final ApplicationConfig config;
-    private final CityService cityService;
     private final KeyVaultService keyVaultService;
     private final CsvProcessingService csvProcessingService;
     private final DatabaseService databaseService;
@@ -40,95 +38,99 @@ public class Function {
     
     public Function() {
         this.config = new ApplicationConfig();
-        this.cityService = new CityService(config);
         this.keyVaultService = new KeyVaultService(config);
         this.csvProcessingService = new CsvProcessingService();
         this.databaseService = new DatabaseService(config);
         this.storageService = new StorageService(config);
     }
     
-    @FunctionName("HttpExample")
-    public HttpResponseMessage run(
+    @FunctionName("Echo")
+    public HttpResponseMessage echo(
             @HttpTrigger(
                 name = "req",
-                methods = {HttpMethod.GET, HttpMethod.POST},
-                authLevel = AuthorizationLevel.ANONYMOUS)
+                methods = {HttpMethod.GET},
+                authLevel = AuthorizationLevel.ANONYMOUS,
+                route = "echo")
                 HttpRequestMessage<Optional<String>> request,
             final ExecutionContext context) {
-        context.getLogger().info("Java HTTP trigger processed a request.");
+        context.getLogger().info("Echo API called.");
 
         // Parse query parameter
-        final String query = request.getQueryParameters().get("name");
-        final String name = request.getBody().orElse(query);
+        final String name = request.getQueryParameters().get("name");
 
         if (name == null) {
             return ResponseUtil.createErrorResponse(request, HttpStatus.BAD_REQUEST, 
-                "Please pass a name on the query string or in the request body");
+                "Please pass a name on the query string");
         } else {
-            return ResponseUtil.createSuccessResponse(request, "Hello, " + name, "Request processed successfully");
+            return ResponseUtil.createSuccessResponse(request, "Hello, " + name, "Echo request processed successfully");
         }
     }
 
-    @FunctionName("TaiwanCities")
-    public HttpResponseMessage getTaiwanCities(
+    @FunctionName("ConfigEnv")
+    public HttpResponseMessage getConfigEnv(
             @HttpTrigger(
                 name = "req",
                 methods = {HttpMethod.GET},
                 authLevel = AuthorizationLevel.ANONYMOUS,
-                route = "cities")
+                route = "config-env")
                 HttpRequestMessage<Optional<String>> request,
             final ExecutionContext context) {
-        context.getLogger().info("Taiwan cities API called.");
+        context.getLogger().info("Config-env API called.");
 
-        // Log environment variables if debug mode is enabled
-        if (config.isDebugMode()) {
-            context.getLogger().info("Environment: " + config.getEnvironment());
-            context.getLogger().info("API Version: " + config.getApiVersion());
-            context.getLogger().info("Debug Mode: " + config.isDebugMode());
-            context.getLogger().info("Max Cities Count: " + config.getMaxCitiesCount());
-        }
-
-        List<String> cities = cityService.getCities();
-        
-        return ResponseUtil.createCitiesResponse(request, config.getEnvironment(), 
-            config.getApiVersion(), cities);
-    }
-
-    @FunctionName("Config")
-    public HttpResponseMessage getConfig(
-            @HttpTrigger(
-                name = "req",
-                methods = {HttpMethod.GET},
-                authLevel = AuthorizationLevel.ANONYMOUS,
-                route = "config")
-                HttpRequestMessage<Optional<String>> request,
-            final ExecutionContext context) {
-        context.getLogger().info("Config API called.");
-
-        Map<String, String> configData = Map.of(
-            "environment", config.getEnvironment() != null ? config.getEnvironment() : "not set",
-            "apiVersion", config.getApiVersion() != null ? config.getApiVersion() : "not set",
-            "debugMode", String.valueOf(config.isDebugMode()),
-            "maxCitiesCount", String.valueOf(config.getMaxCitiesCount())
+        Map<String, String> envConfigData = Map.of(
+            "ENV_APP_NAME", System.getenv("ENV_APP_NAME") != null ? System.getenv("ENV_APP_NAME") : "not set",
+            "ENV_REGION", System.getenv("ENV_REGION") != null ? System.getenv("ENV_REGION") : "not set"
         );
 
-        return ResponseUtil.createConfigResponse(request, configData);
+        return ResponseUtil.createConfigResponse(request, envConfigData);
     }
 
-    @FunctionName("KeyVaultSecrets")
-    public HttpResponseMessage getKeyVaultSecrets(
+    @FunctionName("ConfigKv")
+    public HttpResponseMessage getConfigKv(
             @HttpTrigger(
                 name = "req",
                 methods = {HttpMethod.GET},
                 authLevel = AuthorizationLevel.ANONYMOUS,
-                route = "secrets")
+                route = "config-kv")
                 HttpRequestMessage<Optional<String>> request,
             final ExecutionContext context) {
-        context.getLogger().info("Key Vault secrets API called.");
+        context.getLogger().info("Config-kv API called.");
 
-        Map<String, Object> secrets = keyVaultService.getKeyVaultSecrets(context);
+        Map<String, Object> kvConfigData = keyVaultService.getKeyVaultSecrets(context);
         
-        return ResponseUtil.createSuccessResponse(request, secrets, "Key Vault secrets retrieved successfully");
+        return ResponseUtil.createSuccessResponse(request, kvConfigData, "Key Vault configuration retrieved successfully");
+    }
+
+    @FunctionName("DbTest")
+    public HttpResponseMessage testDatabase(
+            @HttpTrigger(
+                name = "req",
+                methods = {HttpMethod.GET},
+                authLevel = AuthorizationLevel.ANONYMOUS,
+                route = "db-test")
+                HttpRequestMessage<Optional<String>> request,
+            final ExecutionContext context) {
+        context.getLogger().info("Database test API called.");
+
+        try {
+            // Test database connection
+            boolean isConnected = databaseService.testConnection(context);
+            
+            Map<String, Object> dbTestResult = Map.of(
+                "connection_status", isConnected ? "connected" : "failed",
+                "db_endpoint", System.getenv("DB_ENDPOINT") != null ? System.getenv("DB_ENDPOINT") : "not set",
+                "db_database_name", System.getenv("DB_DATABASE_NAME") != null ? System.getenv("DB_DATABASE_NAME") : "not set",
+                "db_collection_name", System.getenv("DB_COLLECTION_NAME") != null ? System.getenv("DB_COLLECTION_NAME") : "not set",
+                "timestamp", java.time.Instant.now().toString()
+            );
+            
+            return ResponseUtil.createSuccessResponse(request, dbTestResult, "Database test completed");
+            
+        } catch (Exception e) {
+            context.getLogger().severe("Database test failed: " + e.getMessage());
+            return ResponseUtil.createErrorResponse(request, HttpStatus.INTERNAL_SERVER_ERROR, 
+                "Database test failed: " + e.getMessage());
+        }
     }
 
     @FunctionName("CsvBlobProcessor")

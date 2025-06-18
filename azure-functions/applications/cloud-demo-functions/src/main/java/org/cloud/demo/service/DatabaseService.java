@@ -301,4 +301,38 @@ public class DatabaseService {
         
         return results;
     }
+    
+    /**
+     * Test database connection
+     */
+    public boolean testConnection(ExecutionContext context) {
+        try {
+            Optional<String> databaseName = config.getCosmosDatabase();
+            Optional<String> collectionName = config.getCosmosCollection();
+            
+            if (databaseName.isEmpty() || collectionName.isEmpty()) {
+                context.getLogger().warning("Database configuration not found");
+                return false;
+            }
+            
+            try (MongoClient mongoClient = createMongoClient(context)) {
+                MongoDatabase database = mongoClient.getDatabase(databaseName.get());
+                MongoCollection<Document> collection = database.getCollection(collectionName.get());
+                
+                // Simple ping test
+                collection.countDocuments();
+                
+                context.getLogger().info("Database connection test successful");
+                return true;
+                
+            } catch (Exception e) {
+                context.getLogger().severe("Database connection test failed: " + e.getMessage());
+                return false;
+            }
+            
+        } catch (Exception e) {
+            context.getLogger().severe("Database connection test error: " + e.getMessage());
+            return false;
+        }
+    }
 } 

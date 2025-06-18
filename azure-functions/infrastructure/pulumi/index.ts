@@ -247,56 +247,31 @@ let appSettings: any[] = [
         name: "APPLICATIONINSIGHTS_CONNECTION_STRING",
         value: appInsights.connectionString,
     },
-    // Custom environment variables
+    // Environment variables for /api/config-env
     {
-        name: "APP_ENVIRONMENT",
-        value: config.get("appEnvironment") || "development",
+        name: "ENV_APP_NAME",
+        value: "cloud-demo-functions",
     },
     {
-        name: "API_VERSION",
-        value: config.get("apiVersion") || "v1",
-    },
-    {
-        name: "DEBUG_MODE",
-        value: config.get("debugMode") || "false",
-    },
-    {
-        name: "MAX_CITIES_COUNT",
-        value: config.get("maxCitiesCount") || "50",
-    },
-    {
-        name: "KEY_VAULT_ENABLED",
-        value: enableKeyVault.toString(),
-    },
-    {
-        name: "COSMOS_DB_ENABLED",
-        value: enableCosmosDb.toString(),
-    },
-    // Add SFTP storage connection for blob processing
-    {
-        name: "SFTP_STORAGE_CONNECTION",
-        value: sftpStorageConnectionString,
+        name: "ENV_REGION",
+        value: config.get("region") || "twn",
     },
 ];
 
-// Add Cosmos DB settings if enabled (use Service Connector approach)
+// Add Cosmos DB settings if enabled (for /api/db-test)
 if (enableCosmosDb && cosmosAccount) {
     appSettings = appSettings.concat([
         {
-            name: "COSMOS_ENDPOINT",
+            name: "DB_ENDPOINT",
             value: cosmosAccount.documentEndpoint,
         },
         {
-            name: "COSMOS_DATABASE",
+            name: "DB_DATABASE_NAME",
             value: cosmosDatabaseName,
         },
         {
-            name: "COSMOS_COLLECTION",
+            name: "DB_COLLECTION_NAME",
             value: cosmosCollectionName,
-        },
-        {
-            name: "DATA_LIMIT",
-            value: config.get("dataLimit") || "100",
         },
     ]);
 }
@@ -310,14 +285,14 @@ if (enableKeyVault && userAssignedIdentity) {
         userAssignedIdentities: userAssignedIdentity.id.apply(id => ({ [id]: {} })),
     };
     
-    // Add Key Vault settings to appSettings
+    // Add Key Vault settings for /api/config-kv
     appSettings = appSettings.concat([
         {
-            name: "API_KEY",
+            name: "KV_API_KEY",
             value: pulumi.interpolate`@Microsoft.KeyVault(VaultName=${vault!.name};SecretName=api-key)`,
         },
         {
-            name: "DATABASE_CONNECTION",
+            name: "KV_DATABASE_CONNECTION",
             value: pulumi.interpolate`@Microsoft.KeyVault(VaultName=${vault!.name};SecretName=database-connection)`,
         },
         {
