@@ -126,3 +126,25 @@ fi
 echo ""
 
 echo "=========================================="
+echo ""
+echo "Logging and Monitoring:"
+echo "  - Application Insights: ✅ Enabled (90 days retention)"
+echo "  - Function App Logs: ✅ Enabled (Information level)"
+if [ "$COSMOS_ENABLED" = "true" ]; then
+    echo "  - Service Connector: ✅ Cosmos DB with Managed Identity"
+else
+    echo "  - Service Connector: ❌ Disabled (Cosmos DB not enabled)"
+fi
+echo ""
+echo "Log Access Commands:"
+echo "  # Stream real-time logs"
+echo "  az functionapp log tail --name $FUNCTION_APP_NAME --resource-group $RESOURCE_GROUP"
+echo ""
+echo "  # Download logs"
+echo "  az webapp log download --name $FUNCTION_APP_NAME --resource-group $RESOURCE_GROUP --log-file app-logs.zip"
+echo ""
+echo "  # View Application Insights"
+APPINSIGHTS_NAME=$(pulumi stack output applicationInsightsName 2>/dev/null || echo "appins-not-found")
+echo "  az monitor app-insights query --app $APPINSIGHTS_NAME --analytics-query \"requests | limit 10\""
+echo ""
+echo "=========================================="

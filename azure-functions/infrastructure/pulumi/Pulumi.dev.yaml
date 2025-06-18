@@ -1,18 +1,26 @@
 config:
-  azure-functions-demo:resourceGroupName: taiwan-functions-rg
-  azure-functions-demo:functionAppName: taiwan-city-functions
-  azure-functions-demo:storageAccountName: twfuncstorage
+  azure-functions-demo:resourceGroupName: taiwan-functions-pulumi-rg
+  azure-functions-demo:functionAppName: taiwan-city-functions-pulumi
+  azure-functions-demo:storageAccountName: twfuncpulumi01
+  azure-functions-demo:sftpStorageAccountName: twfuncsftp01
   azure-functions-demo:location: eastasia
+  
+  # Application Insights configuration
+  azure-functions-demo:applicationInsightsName: taiwan-func-pulumi-insights
+  
+  # Key Vault configuration (optional)
+  azure-functions-demo:enableKeyVault: false
+  azure-functions-demo:keyVaultName: taiwan-func-pulumi-kv
+  
+  # Cosmos DB configuration (optional - enables CSV processing workflow with Service Connector)
+  azure-functions-demo:enableCosmosDb: true
+  azure-functions-demo:cosmosDbAccountName: taiwan-func-pulumi-cosmos
+  azure-functions-demo:cosmosDatabaseName: csvdata
+  azure-functions-demo:cosmosCollectionName: records
+  azure-functions-demo:dataLimit: "100"
+  
   # Custom environment variables
-  azure-functions-demo:enableKeyVault: "true"
-  azure-functions-demo:keyVaultName: taiwanfunckv01
   azure-functions-demo:appEnvironment: development
   azure-functions-demo:apiVersion: v1
   azure-functions-demo:debugMode: "true"
   azure-functions-demo:maxCitiesCount: "15"
-  # Cosmos DB configuration (optional - enables CSV processing workflow)
-  azure-functions-demo:enableCosmosDb: true
-  azure-functions-demo:cosmosDbAccountName: taiwan-func-cosmos
-  azure-functions-demo:cosmosDatabaseName: csvdata
-  azure-functions-demo:cosmosCollectionName: records
-  azure-functions-demo:dataLimit: "100"
