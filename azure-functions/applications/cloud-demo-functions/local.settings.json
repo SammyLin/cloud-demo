@@ -7,6 +7,8 @@
     "APP_ENVIRONMENT": "local",
     "API_VERSION": "v1",
     "DEBUG_MODE": "true",
-    "MAX_CITIES_COUNT": "10"
+    "MAX_CITIES_COUNT": "10",
+    "COSMOS_DB_ENABLED": "false",
+    "KEY_VAULT_ENABLED": "false"
   }
 }

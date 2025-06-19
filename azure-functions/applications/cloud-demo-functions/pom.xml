@@ -13,7 +13,6 @@
     <description>Azure Functions demo for cloud service integration</description>
 
     <properties>
-    <stagingDirectory>${project.build.directory}/azure-functions/${functionAppName}</stagingDirectory>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <java.version>17</java.version>
         <azure.functions.maven.plugin.version>1.31.0</azure.functions.maven.plugin.version>
@@ -96,9 +95,6 @@
                 <configuration>
                     <schemaVersion>2.0</schemaVersion>
                     <functionAppName>${functionAppName}</functionAppName>
-                    <resourceGroup>taiwan-city-rg</resourceGroup>
-                    <appName>${functionAppName}</appName>
-                    <region>eastasia</region>
                     <runtime>
                         <os>linux</os>
                         <javaVersion>17</javaVersion>
