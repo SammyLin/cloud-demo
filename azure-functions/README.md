@@ -1,211 +1,180 @@
-# Azure Functions – Infrastructure as Code
+# Azure Functions - Serverless Java Functions
 
-This directory provides Infrastructure as Code (IaC) examples for Azure Functions, supporting both Terraform and Pulumi workflows, with automated deployment of Java-based serverless functions.
-
----
+This directory demonstrates Azure Functions deployment using Infrastructure as Code (IaC) with both Terraform and Pulumi, featuring automated Java serverless application deployment with comprehensive CSV processing capabilities.
 
 ## Directory Structure
 ```
 azure-functions/
-├── applications/                # Java Azure Functions application source code
-│   └── taiwan-city-functions/   # Demo function app with HTTP triggers
+├── applications/
+│   └── cloud-demo-functions/    # Java Azure Functions application
+│       ├── src/main/java/org/cloud/demo/
+│       │   ├── Function.java           # Main Functions class
+│       │   ├── config/                 # Configuration classes
+│       │   ├── model/                  # Data models
+│       │   ├── service/                # Business services
+│       │   └── util/                   # Utility classes
+│       ├── host.json                   # Functions runtime config
+│       ├── local.settings.json         # Local development settings
+│       └── pom.xml                     # Maven configuration
 ├── infrastructure/
-│   ├── pulumi/                  # Pulumi IaC and deployment scripts
-│   │   └── deploy-app.sh
-│   └── terraform/               # Terraform IaC and deployment scripts
-│       └── deploy-app.sh
-└── README.md                    # This documentation file
+│   ├── pulumi/                  # Pulumi (TypeScript) IaC implementation
+│   │   ├── index.ts
+│   │   ├── Pulumi.dev.yaml.example
+│   │   └── deploy-app.sh        # Automated deployment script
+│   └── terraform/               # Terraform IaC implementation
+│       ├── main.tf
+│       ├── terraform.tfvars.example
+│       └── deploy-app.sh        # Automated deployment script
+└── README.md
 ```
 
 ## Application Overview
 
-The demo includes three HTTP-triggered functions:
+The `cloud-demo-functions` application provides a comprehensive serverless solution with:
+
+### HTTP-Triggered Functions
 - `HttpExample` - Simple "Hello World" function with name parameter
-- `TaiwanCities` - Returns a list of Taiwan cities/counties as JSON with environment-based configuration
+- `TaiwanCities` - Returns Taiwan cities data with environment-based configuration
 - `Config` - Displays current environment variables and configuration settings
+- `KeyVaultSecrets` - Demonstrates Azure Key Vault integration (optional)
+- `DataReader` - Reads processed CSV data from Cosmos DB
+- `QueryData` - Advanced data querying capabilities
 
-### Environment Variables Support
+### Blob-Triggered Functions
+- `CsvBlobProcessor` - Automatically processes CSV files uploaded to blob storage
 
-The application supports the following environment variables:
-- `APP_ENVIRONMENT` - Application environment (development/staging/production)
-- `API_VERSION` - API version for client compatibility
-- `DEBUG_MODE` - Enable detailed logging when set to "true"
-- `MAX_CITIES_COUNT` - Maximum number of cities to return from the TaiwanCities endpoint
-
----
+### Key Features
+- **CSV File Processing**: Automatic validation and processing of uploaded CSV files
+- **Azure Cosmos DB Integration**: Stores processed data for querying
+- **Azure Key Vault Integration**: Secure secrets management (optional)
+- **SFTP Upload Support**: Dedicated SFTP-enabled storage for file uploads
+- **Environment Configuration**: Flexible configuration via environment variables
+- **Error Handling**: Comprehensive error logging and file management
 
 ## Prerequisites
-
-- [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli) installed and logged in
+- [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli) logged in (`az login`)
 - [Maven](https://maven.apache.org/install.html) for building Java projects
 - [Pulumi CLI](https://www.pulumi.com/docs/get-started/install/) (for Pulumi workflow)
-- [Terraform CLI](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli) (for Terraform workflow)
+- [Terraform CLI](https://developer.hashicorp.com/terraform/install) (for Terraform workflow)
 
-## Terraform Workflow
+## Deployment Options
 
-1. **Enter the Terraform directory:**
-   ```sh
-   cd azure-functions/infrastructure/terraform
-   ```
+### Option 1: Terraform
+```bash
+cd azure-functions/infrastructure/terraform
 
-2. **Configure Azure subscription:**
-   ```sh
-   # Option 1: Use environment variable
-   export TF_VAR_subscription_id=your-subscription-id
-   
-   # Option 2: Create dev.auto.tfvars file (not tracked in git)
-   cp environments/dev/dev.auto.tfvars.example environments/dev/dev.auto.tfvars
-   # Edit the file and add your subscription_id
-   ```
+# Configure your subscription ID
+export TF_VAR_subscription_id=your-subscription-id
 
-3. **Initialize and deploy infrastructure:**
-   ```sh
-   terraform init
-   terraform apply -var-file=environments/dev/main.tfvars
-   ```
+# Deploy infrastructure
+terraform init
+terraform apply
 
-4. **Deploy the application:**
-   ```sh
-   ./deploy-app.sh
-   ```
+# Deploy Functions application
+./deploy-app.sh
 
-5. **Test the functions:**
-   ```sh
-   # Get the Function App URL from terraform output
-   FUNCTION_URL=$(terraform output -raw function_app_url)
-   
-   # Test the endpoints
-   curl "$FUNCTION_URL/api/HttpExample?name=World"
-   curl "$FUNCTION_URL/api/cities"
-   curl "$FUNCTION_URL/api/config"
-   ```
-
-## Pulumi Workflow
-
-1. **Enter the Pulumi directory:**
-   ```sh
-   cd azure-functions/infrastructure/pulumi
-   ```
-
-2. **Configure Pulumi stack:**
-   ```sh
-   # Copy and edit the configuration file
-   cp Pulumi.dev.yaml.example Pulumi.dev.yaml
-   # Edit Pulumi.dev.yaml with your desired settings
-   ```
-
-3. **Initialize and deploy infrastructure:**
-   ```sh
-   pulumi login
-   pulumi stack init dev  # or select existing stack
-   pulumi up
-   ```
-
-4. **Deploy the application:**
-   ```sh
-   ./deploy-app.sh
-   ```
-
-5. **Test the functions:**
-   ```sh
-   # Get the Function App URL from Pulumi output
-   FUNCTION_URL=$(pulumi stack output functionAppUrl)
-   
-   # Test the endpoints
-   curl "$FUNCTION_URL/api/HttpExample?name=World"
-   curl "$FUNCTION_URL/api/cities"
-   curl "$FUNCTION_URL/api/config"
-   ```
-
----
-
-## About deploy-app.sh
-
-Each IaC subdirectory contains a `deploy-app.sh` script that:
-
-1. **Builds the Java project** using Maven (`mvn clean package`)
-2. **Creates deployment package** from the Azure Functions build output
-3. **Extracts resource information** from IaC outputs (Pulumi stack outputs or Terraform outputs)
-4. **Deploys to Azure** using `az functionapp deployment source config-zip`
-
-## Configuration Details
-
-### Pulumi Configuration (`Pulumi.dev.yaml`)
-```yaml
-config:
-  azure-functions-demo:resourceGroupName: taiwan-functions-rg
-  azure-functions-demo:functionAppName: taiwan-city-functions
-  azure-functions-demo:storageAccountName: taiwanfunctionsstorage
-  azure-functions-demo:location: eastasia
-  # Custom environment variables
-  azure-functions-demo:appEnvironment: development
-  azure-functions-demo:apiVersion: v1
-  azure-functions-demo:debugMode: "true"
-  azure-functions-demo:maxCitiesCount: "15"
+# Test the endpoints
+FUNCTION_URL=$(terraform output -raw function_app_url)
+curl "$FUNCTION_URL/api/HttpExample?name=World"
+curl "$FUNCTION_URL/api/cities"
+curl "$FUNCTION_URL/api/config"
 ```
 
-### Terraform Configuration (`main.tfvars`)
-```hcl
-resource_group_name    = "taiwan-functions-rg"
-location               = "East Asia"
-function_app_name      = "taiwan-city-functions"
-storage_account_name   = "taiwanfunctionsstorage"
+### Option 2: Pulumi
+```bash
+cd azure-functions/infrastructure/pulumi
 
-# Custom environment variables (optional)
-app_environment        = "development"
-api_version           = "v1"
-debug_mode            = "true"
-max_cities_count      = "25"
+# Configure stack settings
+cp Pulumi.dev.yaml.example Pulumi.dev.yaml
+# Edit Pulumi.dev.yaml with your settings
+
+# Deploy infrastructure
+pulumi login
+pulumi stack init dev  # or select existing
+pulumi up
+
+# Deploy Functions application
+./deploy-app.sh
+
+# Test the endpoints
+FUNCTION_URL=$(pulumi stack output functionAppUrl)
+curl "$FUNCTION_URL/api/HttpExample?name=World"
+curl "$FUNCTION_URL/api/cities"
+curl "$FUNCTION_URL/api/config"
 ```
 
----
+## CSV Processing Workflow
+
+When Cosmos DB is enabled, you can test the complete CSV processing pipeline:
+
+### 1. Upload Test Files
+```bash
+# Get storage account from outputs
+STORAGE_ACCOUNT=$(terraform output -raw storage_account_name)
+
+# Upload CSV file to trigger processing
+az storage blob upload \
+  --account-name $STORAGE_ACCOUNT \
+  --container-name csv-uploads \
+  --name test_data.csv \
+  --file test_data_valid.csv
+```
+
+### 2. Monitor Processing
+```bash
+# Check processed data
+curl "$FUNCTION_URL/api/data"
+
+# Check processing results
+az storage blob list --account-name $STORAGE_ACCOUNT --container-name csv-success
+az storage blob list --account-name $STORAGE_ACCOUNT --container-name csv-failure
+```
 
 ## Local Development
 
-To run the functions locally:
+```bash
+cd azure-functions/applications/cloud-demo-functions
 
-```sh
-cd azure-functions/applications/taiwan-city-functions
-
-# Install Azure Functions Core Tools if not already installed
-# npm install -g azure-functions-core-tools@4 --unsafe-perm true
-
-# Start local development server
+# Build and run locally
 mvn clean package
 func start
 ```
 
-Functions will be available at:
+Local endpoints:
 - `http://localhost:7071/api/HttpExample?name=World`
 - `http://localhost:7071/api/cities`
 - `http://localhost:7071/api/config`
 
-Local environment variables are configured in `local.settings.json`:
-```json
-{
-  "IsEncrypted": false,
-  "Values": {
-    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
-    "FUNCTIONS_WORKER_RUNTIME": "java",
-    "FUNCTIONS_EXTENSION_VERSION": "~4",
-    "APP_ENVIRONMENT": "local",
-    "API_VERSION": "v1",
-    "DEBUG_MODE": "true",
-    "MAX_CITIES_COUNT": "10"
-  }
-}
-```
+## Configuration
 
----
+### Environment Variables
+The application supports these environment variables:
+- `APP_ENVIRONMENT` - Application environment (development/staging/production)
+- `API_VERSION` - API version for client compatibility
+- `DEBUG_MODE` - Enable detailed logging ("true"/"false")
+- `MAX_CITIES_COUNT` - Maximum cities to return
+- `COSMOS_DB_ENABLED` - Enable Cosmos DB integration
+- `KEY_VAULT_ENABLED` - Enable Key Vault integration
 
-## Clean Up Resources
+### Configuration Files
+- **Pulumi**: Configure in `Pulumi.dev.yaml`
+- **Terraform**: Configure in `terraform.tfvars`
+- **Local**: Configure in `local.settings.json`
 
-**Terraform:**
-```sh
-terraform destroy -var-file=environments/dev/main.tfvars
-```
+## Deployment Scripts
+Each `deploy-app.sh` script automatically:
+1. Builds the Java project using Maven
+2. Creates ZIP deployment package
+3. Extracts resource names from IaC outputs
+4. Deploys to Azure Function App using Azure CLI
 
-**Pulumi:**
-```sh
+## Clean Up
+```bash
+# Pulumi
 pulumi destroy
+
+# Terraform
+terraform destroy
 ```
+
+For detailed configuration and SFTP setup, see [CLAUDE.md](../CLAUDE.md).

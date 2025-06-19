@@ -54,7 +54,17 @@ infrastructure/pulumi/*.js.map
 **/terraform.tfstate.backup
 **/.terraform.tfstate.lock.info
 **/terraform.tfvars
+!**/terraform.tfvars.example
 # Keep .terraform.lock.hcl for dependency management
+
+# Azure Functions and deployment artifacts
+**/*.zip
+**/functions.zip
+
+# SSH keys and sensitive files
+azure_sftp_key*
+*.pem
+dev.auto.tfvars
 
 # Claude Code
 .claude/
